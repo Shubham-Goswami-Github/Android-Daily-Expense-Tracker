@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="light_gray">#D3D3D3</color>
+    <color name="gray">#808080</color> <!-- Standard Gray -->
+<color name="green">#40D849</color>
+    <color name="red">#E42A1C</color>
+
+        <color name="colorPressed">#FF0000</color> <!-- Red color when pressed -->  
+        <color name="colorDefault">#FFFFFF</color> <!-- White color for the default state -->
+
+
+        <color name="dark_blue">#003366</color>
+        <color name="light_blue">#66CCFF</color>
+
+
+        <color name="colorPrimary">#1976D2</color>
+        <color name="colorPrimaryDark">#0D47A1</color>
+        <color name="colorAccent">#FFC107</color>
+        <!-- Baaki custom colors bhi yahan ho sakte hain -->
+
+
+
+    <color name="purple_500">#B9160A</color> <!-- You can change the hex code to the desired color -->
+
+</resources>
