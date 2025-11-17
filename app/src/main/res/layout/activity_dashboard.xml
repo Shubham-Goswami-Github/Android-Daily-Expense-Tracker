@@ -6,41 +6,40 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#F4F6F8"
-    android:padding="16dp"
+    android:padding="12dp"
     tools:context=".DashboardActivity">
 
     <!-- App Logo -->
     <ImageView
         android:id="@+id/imgLogo"
-        android:layout_width="180dp"
-        android:layout_height="140dp"
-        android:layout_marginTop="8dp"
+        android:layout_width="160dp"
+        android:layout_height="120dp"
         android:contentDescription="App logo"
+        android:layout_marginTop="4dp"
         android:scaleType="centerInside"
         android:src="@drawable/logoft"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"/>
 
     <!-- Month Selector Card -->
     <androidx.cardview.widget.CardView
         android:id="@+id/monthCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         app:cardBackgroundColor="#FFFFFF"
-        app:cardCornerRadius="18dp"
+        app:cardCornerRadius="14dp"
         app:cardElevation="6dp"
-        app:cardUseCompatPadding="true"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imgLogo"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/imgLogo">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
-            android:layout_height="64dp"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp">
+            android:layout_height="60dp"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp">
 
             <TextView
                 android:id="@+id/tvSelectMonthLabel"
@@ -48,25 +47,24 @@
                 android:layout_height="wrap_content"
                 android:text="Select Month"
                 android:textColor="#0F172A"
-                android:textSize="16sp"
+                android:textSize="15sp"
                 android:fontFamily="sans-serif-medium"
+                app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintStart_toStartOf="parent"
-                app:layout_constraintTop_toTopOf="parent" />
+                app:layout_constraintStart_toStartOf="parent"/>
 
             <Spinner
                 android:id="@+id/spinnerMonth"
                 android:layout_width="0dp"
                 android:layout_height="40dp"
-                android:layout_marginStart="12dp"
-                android:paddingStart="10dp"
-                android:paddingEnd="10dp"
-                android:backgroundTint="#1E3A8A"
                 android:popupBackground="#FFFFFF"
-                app:layout_constraintBottom_toBottomOf="@+id/tvSelectMonthLabel"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:layout_marginStart="12dp"
+                app:layout_constraintStart_toEndOf="@+id/tvSelectMonthLabel"
                 app:layout_constraintEnd_toEndOf="parent"
-                app:layout_constraintStart_toEndOf="@id/tvSelectMonthLabel"
-                app:layout_constraintTop_toTopOf="@+id/tvSelectMonthLabel" />
+                app:layout_constraintTop_toTopOf="@+id/tvSelectMonthLabel"
+                app:layout_constraintBottom_toBottomOf="@+id/tvSelectMonthLabel"/>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.cardview.widget.CardView>
 
@@ -75,55 +73,52 @@
         android:id="@+id/dateCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
+        android:layout_marginTop="12dp"
         app:cardBackgroundColor="#1E3A8A"
-        app:cardCornerRadius="18dp"
+        app:cardCornerRadius="14dp"
         app:cardElevation="6dp"
-        app:cardUseCompatPadding="true"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/monthCard"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/monthCard">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:gravity="center"
             android:orientation="horizontal"
-            android:padding="12dp">
+            android:padding="10dp"
+            android:gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
             <ImageView
                 android:id="@+id/previousDateButton"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:padding="6dp"
-                android:contentDescription="Previous date"
+                android:tint="#FFFFFF"
                 android:clickable="true"
                 android:focusable="true"
-                app:srcCompat="@drawable/ic_chevron"
-                android:tint="#FFFFFF" />
+                app:srcCompat="@drawable/ic_chevron"/>
 
             <TextView
                 android:id="@+id/currentDate"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="20dp"
-                android:layout_marginEnd="20dp"
                 android:text="May 17, 2023"
                 android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:fontFamily="sans-serif-medium" />
+                android:textSize="17sp"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginStart="18dp"
+                android:layout_marginEnd="18dp"/>
 
             <ImageView
                 android:id="@+id/nextDateButton"
                 android:layout_width="36dp"
                 android:layout_height="36dp"
                 android:padding="6dp"
-                android:rotation="180"
-                android:contentDescription="Next date"
+                android:tint="#FFFFFF"
                 android:clickable="true"
                 android:focusable="true"
-                app:srcCompat="@drawable/ic_chevron"
-                android:tint="#FFFFFF" />
+                android:rotation="180"
+                app:srcCompat="@drawable/ic_chevron"/>
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
@@ -132,76 +127,152 @@
         android:id="@+id/summaryCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="14dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginTop="12dp"
         app:cardBackgroundColor="#FFFFFF"
-        app:cardCornerRadius="18dp"
+        app:cardCornerRadius="14dp"
         app:cardElevation="6dp"
-        app:cardUseCompatPadding="true"
-        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/dateCard"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/dateCard">
+        app:layout_constraintEnd_toEndOf="parent">
 
         <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="16dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
 
             <TextView
                 android:id="@+id/tvMonthlySalary"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
                 android:text="Monthly Budget: ₹0"
+                android:textSize="16sp"
                 android:textColor="#111827"
-                android:textSize="17sp"
-                android:fontFamily="sans-serif-medium" />
+                android:fontFamily="sans-serif-medium"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
 
             <TextView
                 android:id="@+id/tvTotalBalance"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Total Balance: ₹0"
+                android:text="Balance: ₹0"
                 android:textColor="#16A34A"
-                android:textSize="20sp"
-                android:fontFamily="sans-serif-medium" />
-
-            <TextView
-                android:id="@+id/tvTotalIncome"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:textSize="18sp"
                 android:layout_marginTop="8dp"
-                android:text="Total Income: ₹0"
-                android:textColor="#1D4ED8"
-                android:textSize="16sp"
-                android:fontFamily="sans-serif-medium" />
-
-            <TextView
-                android:id="@+id/tvTotalExpense"
+                android:fontFamily="sans-serif-medium"
                 android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:text="Total Expenses: ₹0"
-                android:textColor="#DC2626"
-                android:textSize="16sp"
-                android:fontFamily="sans-serif-medium" />
+                android:layout_marginTop="12dp"
+                android:weightSum="2"
+                android:orientation="horizontal">
+
+                <TextView
+                    android:id="@+id/tvTotalIncome"
+                    android:text="Income: ₹0"
+                    android:textSize="14sp"
+                    android:textColor="#1D4ED8"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"/>
+
+                <TextView
+                    android:id="@+id/tvTotalExpense"
+                    android:text="Expense: ₹0"
+                    android:textSize="14sp"
+                    android:textColor="#DC2626"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <!-- View Statistics button -->
+            <Button
+                android:id="@+id/btnToggleStats"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_marginTop="10dp"
+                android:text="View Statistics"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#1E3A8A"
+                android:fontFamily="sans-serif-medium"/>
+
         </LinearLayout>
     </androidx.cardview.widget.CardView>
 
-    <!-- Transactions RecyclerView -->
+    <!-- Charts (hidden by default) -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/chartsCard"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:visibility="gone"
+        app:cardBackgroundColor="#FFFFFF"
+        app:cardCornerRadius="14dp"
+        app:cardElevation="6dp"
+        app:layout_constraintTop_toBottomOf="@+id/summaryCard"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:text="Statistics"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="#0F172A"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <TextView
+                android:text="Daily totals (lines) + Average/day (dashed)"
+                android:textSize="12sp"
+                android:textColor="#6B7280"
+                android:layout_marginTop="2dp"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <com.github.mikephil.charting.charts.LineChart
+                android:id="@+id/lineChartDailyTotals"
+                android:layout_width="match_parent"
+                android:layout_height="200dp"
+                android:layout_marginTop="8dp"/>
+
+            <TextView
+                android:text="Average per Day"
+                android:textSize="14sp"
+                android:layout_marginTop="10dp"
+                android:fontFamily="sans-serif-medium"
+                android:textColor="#0F172A"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"/>
+
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/barChartDailyAverage"
+                android:layout_width="match_parent"
+                android:layout_height="180dp"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Transactions List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvTransactions"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:padding="8dp"
+        android:padding="6dp"
         android:clipToPadding="false"
+        tools:listitem="@layout/item_transaction"
         android:scrollbars="vertical"
-        app:layout_constraintTop_toBottomOf="@id/summaryCard"
-        app:layout_constraintBottom_toTopOf="@id/bottomNavigation"
+        app:layout_constraintTop_toBottomOf="@+id/chartsCard"
+        app:layout_constraintBottom_toTopOf="@+id/bottomNavigation"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        tools:listitem="@layout/item_transaction" />
+        app:layout_constraintEnd_toEndOf="parent"/>
 
     <!-- Bottom Navigation -->
     <com.google.android.material.bottomnavigation.BottomNavigationView
@@ -212,10 +283,9 @@
         android:elevation="8dp"
         app:itemIconTint="@color/light_blue"
         app:itemTextColor="@color/dark_blue"
-        app:labelVisibilityMode="labeled"
+        app:menu="@menu/bottom_nav_menu"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:menu="@menu/bottom_nav_menu" />
+        app:layout_constraintEnd_toEndOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

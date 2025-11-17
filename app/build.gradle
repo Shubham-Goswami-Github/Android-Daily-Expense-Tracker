@@ -61,8 +61,8 @@ dependencies {
     annotationProcessor 'com.github.bumptech.glide:compiler:4.15.1'
     implementation 'com.google.firebase:firebase-storage:21.0.1'
     implementation 'com.google.android.material:material:1.9.0' // or latest
-
-
+    implementation 'com.github.PhilJay:MPAndroidChart:v3.1.0'
+    implementation 'com.github.PhilJay:MPAndroidChart:3.1.0'
     implementation 'com.google.android.material:material:1.9.0'
     implementation 'com.airbnb.android:lottie:6.1.0'
 
