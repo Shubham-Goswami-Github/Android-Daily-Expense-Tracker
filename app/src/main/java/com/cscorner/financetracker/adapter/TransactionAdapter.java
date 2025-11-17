@@ -17,8 +17,6 @@ import com.cscorner.financetracker.model.Transaction;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -30,7 +28,6 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
     private List<Transaction> transactionList;
     private FirebaseFirestore db;
 
-    // Constructor
     public TransactionAdapter(List<Transaction> transactionList) {
         this.transactionList = transactionList;
         this.db = FirebaseFirestore.getInstance();
@@ -45,21 +42,14 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
 
     @Override
     public void onBindViewHolder(@NonNull TransactionViewHolder holder, int position) {
+
         Transaction transaction = transactionList.get(position);
 
-        // 🧪 Debug: Check incoming time format
-        Log.d("TransactionAdapter", "Raw Time: " + transaction.getTime());
-
-        // Format time to 12-hour format
         String formattedTime = formatTimeTo12Hour(transaction.getTime());
 
-        // Set date and time
         holder.tvDateTime.setText(transaction.getDate() + " " + formattedTime);
-
-        // Set transaction note
         holder.tvNote.setText(transaction.getNote());
 
-        // Set amount with symbol and color
         if (transaction.isIncome()) {
             holder.tvAmount.setText("+ ₹" + transaction.getAmount());
             holder.tvAmount.setTextColor(holder.itemView.getContext().getResources().getColor(R.color.green));
@@ -68,10 +58,8 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
             holder.tvAmount.setTextColor(holder.itemView.getContext().getResources().getColor(R.color.red));
         }
 
-        // Set delete button listener
         holder.btnDelete.setOnClickListener(v -> {
-            // Pass the context from the holder to the deleteTransaction method
-            deleteTransaction(transaction, position, holder.itemView.getContext());
+            deleteTransaction(transaction, holder.getAdapterPosition(), holder.itemView.getContext());
         });
     }
 
@@ -80,7 +68,6 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
         return transactionList.size();
     }
 
-    // 🔁 Format time to 12-hour with AM/PM
     private String formatTimeTo12Hour(String time24) {
         try {
             SimpleDateFormat sdfInput;
@@ -89,149 +76,126 @@ public class TransactionAdapter extends RecyclerView.Adapter<TransactionAdapter.
             } else if (time24.matches("\\d{2}:\\d{2}")) {
                 sdfInput = new SimpleDateFormat("HH:mm", Locale.getDefault());
             } else {
-                return time24; // fallback
+                return time24;
             }
 
             SimpleDateFormat sdfOutput = new SimpleDateFormat("hh:mm a", Locale.getDefault());
             Date dateObj = sdfInput.parse(time24);
             return sdfOutput.format(dateObj);
         } catch (Exception e) {
-            e.printStackTrace();
             return time24;
         }
     }
 
-    // Delete a transaction from Firestore
+    // 🔥 FIXED FIREBASE DELETE FUNCTION
     private void deleteTransaction(Transaction transaction, int position, Context context) {
+
         String email = FirebaseAuth.getInstance().getCurrentUser().getEmail();
-        if (email == null || email.isEmpty()) {
+        if (email == null) {
             Toast.makeText(context, "User not logged in!", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        // Firestore reference to the specific document of the transaction
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        String transactionId = transaction.getTransactionId();
+        if (transactionId == null || transactionId.isEmpty()) {
+            Toast.makeText(context, "Transaction ID missing!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String monthName = convertDateToMonthName(transaction.getDate()); // FIXED
+
         db.collection("Users")
                 .document(email)
                 .collection("Financial Details")
                 .document("Monthly Expenditure")
-                .collection(transaction.getMonth()) // Using the month from the transaction
-                .document(transaction.getTransactionDateKey()) // Use transaction date key for the document id
+                .collection(monthName)
+                .document(transactionId)
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    // Remove transaction from the list and notify the adapter
+
                     transactionList.remove(position);
                     notifyItemRemoved(position);
 
-                    // Recalculate totals after transaction deletion
-                    recalculateTotals(email, transaction.getDate(), context);
+                    recalculateTotals(email, monthName, context);
 
                     Toast.makeText(context, "Transaction deleted", Toast.LENGTH_SHORT).show();
                 })
                 .addOnFailureListener(e -> {
-                    Toast.makeText(context, "Failed to delete transaction", Toast.LENGTH_SHORT).show();
-                    Log.e("TransactionAdapter", "Delete failed", e);
+                    Toast.makeText(context, "Failed to delete", Toast.LENGTH_SHORT).show();
                 });
     }
 
-    // Function to recalculate totals after deleting a transaction
-    private void recalculateTotals(String email, String date, Context context) {
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
+    // Convert 17-11-2025 → November
+    private String convertDateToMonthName(String date) {
+        try {
+            SimpleDateFormat input = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault());
+            Date d = input.parse(date);
 
-        // Fetch all transactions for the given date and month
+            SimpleDateFormat monthFormat = new SimpleDateFormat("MMMM", Locale.getDefault());
+            return monthFormat.format(d);
+        } catch (Exception e) {
+            return "Unknown";
+        }
+    }
+
+    // 🔥 FIXED TOTAL RECALCULATION
+    private void recalculateTotals(String email, String monthName, Context context) {
+
         db.collection("Users")
                 .document(email)
                 .collection("Financial Details")
                 .document("Monthly Expenditure")
-                .collection(getMonthFromDate(date)) // Use the method to get the month
+                .collection(monthName)
                 .get()
-                .addOnSuccessListener(queryDocumentSnapshots -> {
-                    double totalIncome = 0;
-                    double totalExpense = 0;
+                .addOnSuccessListener(query -> {
 
-                    // Calculate the totals based on the remaining transactions
-                    for (DocumentSnapshot document : queryDocumentSnapshots.getDocuments()) {
-                        Transaction transaction = document.toObject(Transaction.class);
-                        if (transaction != null) {
-                            if (transaction.isIncome()) {
-                                totalIncome += transaction.getAmount();
-                            } else {
-                                totalExpense += transaction.getAmount();
-                            }
-                        }
+                    double totalIncome = 0, totalExpense = 0;
+
+                    for (DocumentSnapshot doc : query.getDocuments()) {
+
+                        if (doc.getId().equals("totals")) continue;
+
+                        Transaction t = doc.toObject(Transaction.class);
+                        if (t == null) continue;
+
+                        if (t.isIncome()) totalIncome += t.getAmount();
+                        else totalExpense += t.getAmount();
                     }
 
-                    // Calculate the balance
                     double balance = totalIncome - totalExpense;
 
-                    // Update Firestore with the new totals
                     db.collection("Users")
                             .document(email)
                             .collection("Financial Details")
                             .document("Monthly Expenditure")
-                            .collection(getMonthFromDate(date)) // Same month where transactions are stored
-                            .document("totals") // You can create a 'totals' document to store balance, income, and expense
-                            .set(new Totals(totalIncome, totalExpense, balance))
-                            .addOnSuccessListener(aVoid -> {
-                                // Optionally update the UI (if needed)
-                                Toast.makeText(context, "Totals updated", Toast.LENGTH_SHORT).show();
-                            })
-                            .addOnFailureListener(e -> {
-                                Toast.makeText(context, "Failed to update totals", Toast.LENGTH_SHORT).show();
-                                Log.e("TransactionAdapter", "Failed to update totals", e);
-                            });
-                })
-                .addOnFailureListener(e -> {
-                    Toast.makeText(context, "Failed to fetch transactions", Toast.LENGTH_SHORT).show();
-                    Log.e("TransactionAdapter", "Failed to fetch transactions", e);
+                            .collection(monthName)
+                            .document("totals")
+                            .set(new Totals(totalIncome, totalExpense, balance));
                 });
     }
 
-    // Helper function to get month from date (formatted as yyyy-MM-dd)
-    private String getMonthFromDate(String date) {
-        if (date != null && date.length() >= 7) {
-            return date.substring(5, 7); // Extract the month from date
-        }
-        return ""; // Return empty if date is invalid
-    }
-
-    // Totals class to store the balance, income, and expense
     public static class Totals {
-        private double totalIncome;
-        private double totalExpense;
-        private double balance;
+        public double totalIncome;
+        public double totalExpense;
+        public double balance;
 
         public Totals(double totalIncome, double totalExpense, double balance) {
             this.totalIncome = totalIncome;
             this.totalExpense = totalExpense;
             this.balance = balance;
         }
-
-        // Getters
-        public double getTotalIncome() {
-            return totalIncome;
-        }
-
-        public double getTotalExpense() {
-            return totalExpense;
-        }
-
-        public double getBalance() {
-            return balance;
-        }
     }
-
 
     public static class TransactionViewHolder extends RecyclerView.ViewHolder {
         TextView tvDateTime, tvNote, tvAmount;
-        Button btnDelete;  // Delete button for each transaction item
+        Button btnDelete;
 
         public TransactionViewHolder(@NonNull View itemView) {
             super(itemView);
             tvDateTime = itemView.findViewById(R.id.tvDateTime);
             tvNote = itemView.findViewById(R.id.tvNote);
             tvAmount = itemView.findViewById(R.id.tvAmount);
-            btnDelete = itemView.findViewById(R.id.btnDelete);  // Initialize delete button
+            btnDelete = itemView.findViewById(R.id.btnDelete);
         }
     }
 }

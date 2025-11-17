@@ -141,6 +141,7 @@ public class AddTransactionActivity extends AppCompatActivity {
         // Unique doc ID
         String docId = date + " " + time + " " + System.currentTimeMillis();
 
+
         // Build transaction data
         Map<String, Object> transactionMap = new HashMap<>();
         transactionMap.put("type", transactionType);
@@ -150,7 +151,7 @@ public class AddTransactionActivity extends AppCompatActivity {
         transactionMap.put("date", date);
         transactionMap.put("time", time);
         transactionMap.put("timestamp", com.google.firebase.firestore.FieldValue.serverTimestamp());
-
+        transactionMap.put("transactionId", docId); // <-- Yeh line add karo!
         // Save to Firestore
         DocumentReference docRef = db.collection("Users").document(email)
                 .collection("Financial Details").document("Monthly Expenditure")

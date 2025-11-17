@@ -5,20 +5,22 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".LogoutActivity"
+
+    android:background="@color/white"
     android:padding="20dp">
 
-    <!-- App Logo -->
-    <ImageView
-        android:id="@+id/logo"
-        android:layout_width="233dp"
-        android:layout_height="207dp"
-        android:layout_marginTop="60dp"
-        android:contentDescription="App Logo"
-        android:src="@drawable/logoft"
-        app:layout_constraintEnd_toEndOf="parent"
+    <!-- Lottie Animation -->
+    <com.airbnb.lottie.LottieAnimationView
+        android:id="@+id/lottieAnimationView"
+        android:layout_width="0dp"
+        android:layout_height="250dp"
+        app:lottie_rawRes="@raw/youtube"
+        app:lottie_autoPlay="true"
+        app:lottie_loop="true"
+        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="30dp"/>
 
     <!-- Go to Dashboard Button -->
     <com.google.android.material.button.MaterialButton
@@ -32,10 +34,13 @@
         android:textColor="@android:color/white"
         app:cornerRadius="16dp"
         android:paddingVertical="14dp"
-        app:layout_constraintTop_toBottomOf="@id/logo"
+        app:layout_constraintTop_toBottomOf="@id/lottieAnimationView"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="40dp"/>
+        android:layout_marginTop="40dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:animation="@anim/fade_in"/>
 
     <!-- Logout Button -->
     <com.google.android.material.button.MaterialButton
@@ -52,7 +57,10 @@
         app:layout_constraintTop_toBottomOf="@id/btnGoToDashboard"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="20dp"/>
+        android:layout_marginTop="20dp"
+        android:layout_marginStart="20dp"
+        android:layout_marginEnd="20dp"
+        android:animation="@anim/fade_in"/>
 
     <!-- Footer Text (Developed by Shubham & Yashansii) -->
     <TextView
@@ -63,9 +71,9 @@
         android:textSize="14sp"
         android:textColor="@color/gray"
         android:textAlignment="center"
-        app:layout_constraintTop_toBottomOf="@id/btnLogout"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:layout_marginTop="30dp"/>
+        android:layout_marginBottom="20dp"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

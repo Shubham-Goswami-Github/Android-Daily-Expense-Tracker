@@ -23,7 +23,7 @@ public class WelcomeActivity extends AppCompatActivity {
         super.onStart();
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if (user != null) {
-            startActivity(new Intent(this, HomeActivity.class));
+            startActivity(new Intent(this, DashboardActivity.class));
             finish();
         }
     }

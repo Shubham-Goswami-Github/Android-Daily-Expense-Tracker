@@ -9,6 +9,9 @@ public class Transaction {
     private boolean isExpense;
     private String transactionDateKey; // New field to help group transactions by date
 
+    // 🔹 Added for Firestore document ID
+    private String transactionId;
+
     // 🔹 Default constructor (Required for Firebase)
     public Transaction() {}
 
@@ -20,8 +23,6 @@ public class Transaction {
         this.time = time;
         this.note = note;
         this.isExpense = !isIncome;
-
-        // Generate a key based on the date (used for grouping)
         this.transactionDateKey = generateTransactionDateKey(date);
     }
 
@@ -32,8 +33,7 @@ public class Transaction {
 
     // 🔹 Generate a unique key based on date to group transactions
     private String generateTransactionDateKey(String date) {
-        // Format the date to make it suitable for grouping
-        return date.replace("/", "-"); // Example: "12/04/2025" becomes "12-04-2025"
+        return date != null ? date.replace("/", "-") : "";
     }
 
     // 🔹 Getters
@@ -48,10 +48,9 @@ public class Transaction {
     // 🔹 Added getMonth() method to extract the month
     public String getMonth() {
         if (date != null && date.length() >= 7) {
-            // Extract the first 7 characters (yyyy-MM) from the date string
             return date.substring(5, 7); // Assuming the date format is yyyy-MM-dd
         }
-        return ""; // Return empty string if the date is not valid
+        return "";
     }
 
     // 🔹 Setters (Required for Firebase deserialization)
@@ -60,7 +59,7 @@ public class Transaction {
     public void setNote(String note) { this.note = note; }
     public void setDate(String date) {
         this.date = date;
-        this.transactionDateKey = generateTransactionDateKey(date); // Update the transaction key when date changes
+        this.transactionDateKey = generateTransactionDateKey(date);
     }
     public void setTime(String time) { this.time = time; }
     public void setExpense(boolean isExpense) { this.isExpense = isExpense; }
@@ -68,5 +67,13 @@ public class Transaction {
     // 🔹 Optional: Set by string type (for Firestore string types)
     public void setType(String type) {
         this.isExpense = type != null && type.equalsIgnoreCase("Expense");
+    }
+
+    // 🔹 Getter and Setter for transactionId (Firestore document ID)
+    public String getTransactionId() {
+        return transactionId;
+    }
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
     }
 }
