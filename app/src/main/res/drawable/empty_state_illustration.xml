@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="200dp"
+    android:height="200dp"
+    android:viewportWidth="200"
+    android:viewportHeight="200">
+
+    <!-- Background Circle -->
+    <path
+        android:fillColor="#F1F5F9"
+        android:pathData="M100,20 C144.18,20 180,55.82 180,100 C180,144.18 144.18,180 100,180 C55.82,180 20,144.18 20,100 C20,55.82 55.82,20 100,20 Z"/>
+
+    <!-- Document Icon -->
+    <path
+        android:fillColor="#CBD5E1"
+        android:pathData="M70,50 L110,50 L130,70 L130,150 L70,150 Z"/>
+
+    <!-- Document Fold -->
+    <path
+        android:fillColor="#94A3B8"
+        android:pathData="M110,50 L110,70 L130,70 Z"/>
+
+    <!-- Lines on Document -->
+    <path
+        android:fillColor="#E2E8F0"
+        android:pathData="M80,90 L120,90 M80,105 L120,105 M80,120 L100,120"
+        android:strokeWidth="4"
+        android:strokeColor="#94A3B8"/>
+
+    <!-- Plus Circle -->
+    <path
+        android:fillColor="#3B82F6"
+        android:pathData="M140,140 m-25,0 a25,25 0,1 1,50 0 a25,25 0,1 1,-50 0"/>
+
+    <!-- Plus Sign -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M140,130 L140,150 M130,140 L150,140"
+        android:strokeWidth="4"
+        android:strokeColor="#FFFFFF"/>
+</vector>

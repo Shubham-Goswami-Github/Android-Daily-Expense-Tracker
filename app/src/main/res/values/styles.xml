@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Jo bhi existing styles hain woh rahne do -->
+
+    <!-- Yeh naya add karo -->
+    <style name="Widget.App.Chip.Date" parent="Widget.MaterialComponents.Chip.Choice">
+        <item name="chipBackgroundColor">@color/design_default_color_background</item>
+        <item name="android:textColor">@color/common_google_signin_btn_text_dark</item>
+        <item name="chipCornerRadius">20dp</item>
+        <item name="chipMinHeight">36dp</item>
+        <item name="chipStrokeWidth">0dp</item>
+        <item name="android:textSize">13sp</item>
+        <item name="checkedIconVisible">false</item>
+    </style>
+
+    <!-- Bottom Nav Indicator Style -->
+    <style name="App.BottomNavIndicator" parent="">
+        <item name="android:color">#E0E7FF</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="TabTextAppearance" parent="TextAppearance.Design.Tab">
+        <item name="android:textSize">13sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="textAllCaps">false</item>
+    </style>
+
+</resources>

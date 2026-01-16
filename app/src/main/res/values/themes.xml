@@ -6,4 +6,15 @@
     </style>
 
     <style name="Theme.FinanceTracker" parent="Base.Theme.FinanceTracker" />
+    <!-- Add inside your <resources> tag -->
+    <style name="MaterialAlertDialog_Rounded" parent="ThemeOverlay.MaterialComponents.MaterialAlertDialog">
+        <item name="shapeAppearanceOverlay">@style/ShapeAppearanceOverlay.App.Dialog.Rounded</item>
+        <item name="colorPrimary">@color/primary_blue</item>
+        <item name="colorSecondary">@color/primary_blue</item>
+    </style>
+
+    <style name="ShapeAppearanceOverlay.App.Dialog.Rounded" parent="">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">16dp</item>
+    </style>
 </resources>

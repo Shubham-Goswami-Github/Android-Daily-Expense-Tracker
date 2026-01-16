@@ -9,12 +9,15 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
+import com.google.android.material.card.MaterialCardView;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -29,12 +32,18 @@ public class AddTransactionActivity extends AppCompatActivity {
 
     private AutoCompleteTextView editTextMonth;
     private RadioGroup radioGroupType;
+    private RadioButton radioIncome, radioExpense;
     private EditText editTextAmount, editTextNote, editTextDateTime;
     private Button btnSubmitTransaction;
+    private MaterialCardView cardIncome, cardExpense;
+    private ImageView btnBack;
 
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     private Calendar calendar;
+
+    // Track selected type
+    private String selectedType = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,22 +56,97 @@ public class AddTransactionActivity extends AppCompatActivity {
         calendar = Calendar.getInstance();
 
         // Initialize UI elements
-        editTextMonth = findViewById(R.id.editTextMonth);
-        radioGroupType = findViewById(R.id.radioGroupType);
-        editTextAmount = findViewById(R.id.editTextAmount);
-        editTextNote = findViewById(R.id.editTextNote);
-        editTextDateTime = findViewById(R.id.editTextDateTime);
-        btnSubmitTransaction = findViewById(R.id.btnSubmitTransaction);
+        initializeViews();
 
-        // Setup dropdown and current values
+        // Setup
         setupMonthDropdown();
         updateDateTimeField();
+        setupCardClickListeners();
+        setupBackButton();
+
+        // Set default transaction type based on intent
+        setDefaultTransactionType();
 
         // Open datetime picker on click
         editTextDateTime.setOnClickListener(view -> openDateTimePicker());
 
         // Handle transaction submission
         btnSubmitTransaction.setOnClickListener(view -> saveTransactionToFirestore());
+    }
+
+    private void initializeViews() {
+        editTextMonth = findViewById(R.id.editTextMonth);
+        radioGroupType = findViewById(R.id.radioGroupType);
+        radioIncome = findViewById(R.id.radioIncome);
+        radioExpense = findViewById(R.id.radioExpense);
+        editTextAmount = findViewById(R.id.editTextAmount);
+        editTextNote = findViewById(R.id.editTextNote);
+        editTextDateTime = findViewById(R.id.editTextDateTime);
+        btnSubmitTransaction = findViewById(R.id.btnSubmitTransaction);
+        cardIncome = findViewById(R.id.cardIncome);
+        cardExpense = findViewById(R.id.cardExpense);
+        btnBack = findViewById(R.id.btnBack);
+    }
+
+    private void setupBackButton() {
+        if (btnBack != null) {
+            btnBack.setOnClickListener(v -> finish());
+        }
+    }
+
+    private void setupCardClickListeners() {
+        // Income card click
+        cardIncome.setOnClickListener(v -> {
+            selectIncomeType();
+        });
+
+        // Expense card click
+        cardExpense.setOnClickListener(v -> {
+            selectExpenseType();
+        });
+
+        // Radio button clicks (for compatibility)
+        radioIncome.setOnClickListener(v -> selectIncomeType());
+        radioExpense.setOnClickListener(v -> selectExpenseType());
+    }
+
+    private void selectIncomeType() {
+        selectedType = "Income";
+        radioIncome.setChecked(true);
+        radioExpense.setChecked(false);
+
+        // Update card appearance
+        cardIncome.setStrokeColor(ContextCompat.getColor(this, R.color.primary_blue));
+        cardIncome.setStrokeWidth(4);
+        cardExpense.setStrokeColor(ContextCompat.getColor(this, R.color.text_secondary));
+        cardExpense.setStrokeWidth(0);
+    }
+
+    private void selectExpenseType() {
+        selectedType = "Expense";
+        radioExpense.setChecked(true);
+        radioIncome.setChecked(false);
+
+        // Update card appearance
+        cardExpense.setStrokeColor(ContextCompat.getColor(this, R.color.primary_blue));
+        cardExpense.setStrokeWidth(4);
+        cardIncome.setStrokeColor(ContextCompat.getColor(this, R.color.text_secondary));
+        cardIncome.setStrokeWidth(0);
+    }
+
+    private void setDefaultTransactionType() {
+        String transactionType = getIntent().getStringExtra("transactionType");
+
+        if (transactionType != null) {
+            switch (transactionType) {
+                case "Income":
+                    selectIncomeType();
+                    break;
+                case "Expense":
+                    selectExpenseType();
+                    break;
+            }
+        }
     }
 
     private void setupMonthDropdown() {
@@ -78,22 +162,17 @@ public class AddTransactionActivity extends AppCompatActivity {
         );
 
         editTextMonth.setAdapter(monthAdapter);
-
-        // 👇 Threshold 1 is better for performance
         editTextMonth.setThreshold(1);
 
-        // 👇 Show dropdown when clicked
         editTextMonth.setOnClickListener(v -> {
-            editTextMonth.showDropDown();  // Forcefully show dropdown
+            editTextMonth.showDropDown();
         });
 
-        // 👇 Set default current month only if not already set
         if (editTextMonth.getText().toString().isEmpty()) {
             String currentMonth = new SimpleDateFormat("MMMM", Locale.getDefault()).format(calendar.getTime());
-            editTextMonth.setText(currentMonth, false);  // 👈 false = don't filter dropdown
+            editTextMonth.setText(currentMonth, false);
         }
     }
-
 
     private void openDateTimePicker() {
         DatePickerDialog datePicker = new DatePickerDialog(this, (view, year, month, dayOfMonth) -> {
@@ -114,18 +193,22 @@ public class AddTransactionActivity extends AppCompatActivity {
 
     private void saveTransactionToFirestore() {
         String month = editTextMonth.getText().toString().trim();
-        int selectedRadioId = radioGroupType.getCheckedRadioButtonId();
         String amountStr = editTextAmount.getText().toString().trim();
         String note = editTextNote.getText().toString().trim();
         String dateTime = editTextDateTime.getText().toString().trim();
 
         // Validate fields
-        if (month.isEmpty() || selectedRadioId == -1 || amountStr.isEmpty() || dateTime.isEmpty()) {
+        if (month.isEmpty() || amountStr.isEmpty() || dateTime.isEmpty()) {
             Toast.makeText(this, "Please fill all required fields!", Toast.LENGTH_SHORT).show();
             return;
         }
 
-        String transactionType = ((RadioButton) findViewById(selectedRadioId)).getText().toString();
+        // Check if transaction type is selected
+        if (selectedType == null) {
+            Toast.makeText(this, "Please select Income or Expense!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         String email = mAuth.getCurrentUser() != null ? mAuth.getCurrentUser().getEmail() : null;
 
         if (email == null) {
@@ -141,17 +224,17 @@ public class AddTransactionActivity extends AppCompatActivity {
         // Unique doc ID
         String docId = date + " " + time + " " + System.currentTimeMillis();
 
-
         // Build transaction data
         Map<String, Object> transactionMap = new HashMap<>();
-        transactionMap.put("type", transactionType);
+        transactionMap.put("type", selectedType);
         transactionMap.put("amount", Double.parseDouble(amountStr));
         transactionMap.put("note", note);
         transactionMap.put("category", note.isEmpty() ? "Uncategorized" : note);
         transactionMap.put("date", date);
         transactionMap.put("time", time);
         transactionMap.put("timestamp", com.google.firebase.firestore.FieldValue.serverTimestamp());
-        transactionMap.put("transactionId", docId); // <-- Yeh line add karo!
+        transactionMap.put("transactionId", docId);
+
         // Save to Firestore
         DocumentReference docRef = db.collection("Users").document(email)
                 .collection("Financial Details").document("Monthly Expenditure")
