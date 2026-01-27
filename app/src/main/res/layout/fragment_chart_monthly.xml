@@ -1,26 +1,84 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="16dp"
+    android:background="@color/white">
 
-    <!-- This Month Summary Cards Row -->
+    <!-- Year Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:weightSum="2">
+        android:gravity="center_vertical"
+        android:layout_marginBottom="12dp">
 
-        <!-- This Month's Income Card -->
-        <com.google.android.material.card.MaterialCardView
+        <View
+            android:layout_width="4dp"
+            android:layout_height="18dp"
+            android:background="@drawable/bg_accent_indicator_purple"/>
+
+        <TextView
+            android:id="@+id/tvCurrentYearLabel"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
+            android:layout_marginStart="8dp"
+            android:text="2025"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:fontFamily="sans-serif-bold"/>
+
+        <!-- Year Progress -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_chip_purple"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp">
+
+            <ProgressBar
+                android:id="@+id/progressYearComplete"
+                style="@style/Widget.AppCompat.ProgressBar.Horizontal"
+                android:layout_width="50dp"
+                android:layout_height="6dp"
+                android:progress="0"
+                android:max="100"
+                android:progressDrawable="@drawable/progress_year"/>
+
+            <TextView
+                android:id="@+id/tvMonthsWithData"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:text="0/12 months"
+                android:textColor="#6366F1"
+                android:textSize="10sp"
+                android:fontFamily="sans-serif-medium"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- This Month Summary Cards - 3 Cards -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:weightSum="3">
+
+        <!-- This Month's Income Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardIncome"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
             app:cardBackgroundColor="#F0FDF4"
-            app:cardCornerRadius="12dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="0dp"
             app:strokeWidth="1dp"
             app:strokeColor="#BBF7D0">
@@ -29,35 +87,76 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="12dp">
+                android:padding="10dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="This Month Income"
-                    android:textColor="#166534"
-                    android:textSize="11sp"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_arrow_down"
+                        app:tint="#10B981"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:text="Income"
+                        android:textColor="#166534"
+                        android:textSize="9sp"
+                        android:fontFamily="sans-serif-medium"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tvMonthlyIncome"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="#16A34A"
-                    android:textSize="18sp"
+                    android:textColor="#10B981"
+                    android:textSize="15sp"
                     android:fontFamily="sans-serif-bold"
                     android:layout_marginTop="4dp"/>
+
+                <!-- Change Indicator -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <ImageView
+                        android:id="@+id/ivIncomeArrow"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:src="@drawable/ic_arrow_neutral"
+                        app:tint="@color/text_secondary"/>
+
+                    <TextView
+                        android:id="@+id/tvIncomeChange"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="2dp"
+                        android:text="vs last"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="8sp"/>
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
 
         <!-- This Month's Expense Card -->
         <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardExpense"
             android:layout_width="0dp"
             android:layout_weight="1"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_marginHorizontal="4dp"
             app:cardBackgroundColor="#FEF2F2"
-            app:cardCornerRadius="12dp"
+            app:cardCornerRadius="14dp"
             app:cardElevation="0dp"
             app:strokeWidth="1dp"
             app:strokeColor="#FECACA">
@@ -66,141 +165,484 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="12dp">
+                android:padding="10dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="This Month Expense"
-                    android:textColor="#991B1B"
-                    android:textSize="11sp"/>
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_arrow_up"
+                        app:tint="#EF4444"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:text="Expense"
+                        android:textColor="#991B1B"
+                        android:textSize="9sp"
+                        android:fontFamily="sans-serif-medium"/>
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tvMonthlyExpense"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="₹0"
-                    android:textColor="#DC2626"
-                    android:textSize="18sp"
+                    android:textColor="#EF4444"
+                    android:textSize="15sp"
                     android:fontFamily="sans-serif-bold"
                     android:layout_marginTop="4dp"/>
+
+                <!-- Change Indicator -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <ImageView
+                        android:id="@+id/ivExpenseArrow"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:src="@drawable/ic_arrow_neutral"
+                        app:tint="@color/text_secondary"/>
+
+                    <TextView
+                        android:id="@+id/tvExpenseChange"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="2dp"
+                        android:text="vs last"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="8sp"/>
+                </LinearLayout>
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- This Month's Savings Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/cardSavings"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            app:cardBackgroundColor="#EFF6FF"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#BFDBFE">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="10dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="14dp"
+                        android:layout_height="14dp"
+                        android:src="@drawable/ic_savings"
+                        app:tint="#3B82F6"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="4dp"
+                        android:text="Savings"
+                        android:textColor="#1E40AF"
+                        android:textSize="9sp"
+                        android:fontFamily="sans-serif-medium"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tvMonthlySavings"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="+₹0"
+                    android:textColor="#3B82F6"
+                    android:textSize="15sp"
+                    android:fontFamily="sans-serif-bold"
+                    android:layout_marginTop="4dp"/>
+
+                <!-- Change Indicator -->
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginTop="4dp">
+
+                    <ImageView
+                        android:id="@+id/ivSavingsArrow"
+                        android:layout_width="10dp"
+                        android:layout_height="10dp"
+                        android:src="@drawable/ic_arrow_neutral"
+                        app:tint="@color/text_secondary"/>
+
+                    <TextView
+                        android:id="@+id/tvSavingsChange"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="2dp"
+                        android:text="vs last"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="8sp"/>
+                </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
     </LinearLayout>
 
-    <!-- Year Summary Card - FIXED: Removed cardBackgroundColor with drawable -->
+    <!-- Year Summary Card -->
     <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
         app:cardBackgroundColor="@android:color/transparent"
-        app:cardCornerRadius="12dp"
+        app:cardCornerRadius="14dp"
         app:cardElevation="2dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:padding="14dp"
+            android:orientation="vertical"
             android:background="@drawable/bg_gradient_purple"
-            android:weightSum="3">
+            android:padding="14dp">
+
+            <!-- Year Stats Header -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📅 Year Summary"
+                android:textColor="#FFFFFF"
+                android:textSize="12sp"
+                android:fontFamily="sans-serif-medium"
+                android:layout_marginBottom="10dp"/>
 
             <LinearLayout
-                android:layout_width="0dp"
-                android:layout_weight="1"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center">
+                android:orientation="horizontal"
+                android:weightSum="3">
 
-                <TextView
-                    android:layout_width="wrap_content"
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:text="Year Income"
-                    android:textColor="#E0E7FF"
-                    android:textSize="10sp"/>
+                    android:orientation="vertical"
+                    android:gravity="center">
 
-                <TextView
-                    android:id="@+id/tvYearIncome"
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Total Income"
+                        android:textColor="#C7D2FE"
+                        android:textSize="9sp"/>
+
+                    <TextView
+                        android:id="@+id/tvYearIncome"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₹0"
+                        android:textColor="#4ADE80"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif-bold"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:background="#4338CA"
+                    android:alpha="0.5"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:text="₹0"
-                    android:textColor="#4ADE80"
-                    android:textSize="14sp"
-                    android:fontFamily="sans-serif-bold"/>
-            </LinearLayout>
+                    android:orientation="vertical"
+                    android:gravity="center">
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center">
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Total Expense"
+                        android:textColor="#C7D2FE"
+                        android:textSize="9sp"/>
 
-                <TextView
-                    android:layout_width="wrap_content"
+                    <TextView
+                        android:id="@+id/tvYearExpense"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₹0"
+                        android:textColor="#F87171"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif-bold"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
+
+                <View
+                    android:layout_width="1dp"
+                    android:layout_height="match_parent"
+                    android:background="#4338CA"
+                    android:alpha="0.5"/>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
                     android:layout_height="wrap_content"
-                    android:text="Year Expense"
-                    android:textColor="#E0E7FF"
-                    android:textSize="10sp"/>
+                    android:orientation="vertical"
+                    android:gravity="center">
 
-                <TextView
-                    android:id="@+id/tvYearExpense"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="₹0"
-                    android:textColor="#F87171"
-                    android:textSize="14sp"
-                    android:fontFamily="sans-serif-bold"/>
-            </LinearLayout>
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Net Savings"
+                        android:textColor="#C7D2FE"
+                        android:textSize="9sp"/>
 
-            <LinearLayout
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Savings"
-                    android:textColor="#E0E7FF"
-                    android:textSize="10sp"/>
-
-                <TextView
-                    android:id="@+id/tvYearSavings"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="₹0"
-                    android:textColor="#FFFFFF"
-                    android:textSize="14sp"
-                    android:fontFamily="sans-serif-bold"/>
+                    <TextView
+                        android:id="@+id/tvYearSavings"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="₹0"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif-bold"
+                        android:layout_marginTop="2dp"/>
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Chart Title -->
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
-        android:text="Monthly Income vs Expense (This Year)"
-        android:textColor="@color/text_primary"
-        android:textSize="14sp"
-        android:fontFamily="sans-serif-medium"/>
-
-    <!-- Bar Chart -->
-    <com.github.mikephil.charting.charts.BarChart
-        android:id="@+id/barChartMonthly"
+    <!-- Savings Rate & Averages -->
+    <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="220dp"
-        android:layout_marginTop="8dp"/>
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:background="@drawable/bg_stats_container"
+        android:padding="12dp"
+        android:weightSum="3">
+
+        <!-- Savings Rate -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <View
+                    android:id="@+id/savingsRateIndicator"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:background="@drawable/bg_circle_green"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="Savings Rate"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="9sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="4dp">
+
+                <ImageView
+                    android:id="@+id/ivSavingsRateIcon"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:src="@drawable/ic_emoji_happy"
+                    app:tint="#10B981"/>
+
+                <TextView
+                    android:id="@+id/tvSavingsRate"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="4dp"
+                    android:text="0%"
+                    android:textColor="#10B981"
+                    android:textSize="14sp"
+                    android:fontFamily="sans-serif-bold"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#E2E8F0"/>
+
+        <!-- Avg Monthly Expense -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="📉 Avg Expense"
+                android:textColor="@color/text_secondary"
+                android:textSize="9sp"/>
+
+            <TextView
+                android:id="@+id/tvAvgMonthlyExpense"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="₹0"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-bold"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+
+        <View
+            android:layout_width="1dp"
+            android:layout_height="match_parent"
+            android:background="#E2E8F0"/>
+
+        <!-- Avg Monthly Savings -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💰 Avg Savings"
+                android:textColor="@color/text_secondary"
+                android:textSize="9sp"/>
+
+            <TextView
+                android:id="@+id/tvAvgMonthlySavings"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="+₹0"
+                android:textColor="#3B82F6"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-bold"
+                android:layout_marginTop="4dp"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Selected Month Info (Hidden by default) -->
+    <LinearLayout
+        android:id="@+id/selectedMonthContainer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:layout_marginTop="10dp"
+        android:background="@drawable/bg_selected_day_info"
+        android:padding="10dp"
+        android:visibility="gone"
+        android:alpha="0">
+
+        <ImageView
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_info"
+            app:tint="#6366F1"/>
+
+        <TextView
+            android:id="@+id/tvSelectedMonthInfo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:text="Tap on chart for details"
+            android:textColor="#4338CA"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"/>
+    </LinearLayout>
+
+    <!-- Chart Container -->
+    <com.google.android.material.card.MaterialCardView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        app:cardBackgroundColor="#FAFAFA"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="1dp"
+        app:strokeColor="#E5E7EB">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <!-- Chart Header -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:text="Monthly Comparison"
+                    android:textColor="@color/text_primary"
+                    android:textSize="13sp"
+                    android:fontFamily="sans-serif-medium"/>
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tap bars for details"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="10sp"
+                    android:drawableStart="@drawable/ic_touch"
+                    android:drawablePadding="4dp"
+                    android:drawableTint="@color/text_secondary"/>
+            </LinearLayout>
+
+            <!-- Bar Chart -->
+            <com.github.mikephil.charting.charts.BarChart
+                android:id="@+id/barChartMonthly"
+                android:layout_width="match_parent"
+                android:layout_height="220dp"
+                android:layout_marginTop="8dp"/>
+        </LinearLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <!-- Best & Worst Month Stats -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="12dp"
         android:orientation="horizontal"
         android:weightSum="2">
 
@@ -210,9 +652,11 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:layout_marginEnd="6dp"
-            app:cardBackgroundColor="#F8FAFC"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp">
+            app:cardBackgroundColor="#F0FDF4"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#BBF7D0">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -221,11 +665,20 @@
                 android:padding="12dp"
                 android:gravity="center_vertical">
 
-                <ImageView
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:src="@drawable/ic_trending_up"
-                    app:tint="#16A34A"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    app:cardBackgroundColor="#DCFCE7"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="0dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="10dp"
+                        android:src="@drawable/ic_trending_up"
+                        app:tint="#16A34A"/>
+                </com.google.android.material.card.MaterialCardView>
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -236,8 +689,8 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Best Savings"
-                        android:textColor="@color/text_secondary"
+                        android:text="🏆 Best Month"
+                        android:textColor="#166534"
                         android:textSize="10sp"/>
 
                     <TextView
@@ -245,9 +698,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="N/A"
-                        android:textColor="@color/text_primary"
+                        android:textColor="#10B981"
                         android:textSize="14sp"
-                        android:fontFamily="sans-serif-bold"/>
+                        android:fontFamily="sans-serif-bold"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>
@@ -258,9 +712,11 @@
             android:layout_weight="1"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
-            app:cardBackgroundColor="#F8FAFC"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp">
+            app:cardBackgroundColor="#FEF2F2"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeWidth="1dp"
+            app:strokeColor="#FECACA">
 
             <LinearLayout
                 android:layout_width="match_parent"
@@ -269,11 +725,20 @@
                 android:padding="12dp"
                 android:gravity="center_vertical">
 
-                <ImageView
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:src="@drawable/ic_trending_down"
-                    app:tint="#DC2626"/>
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    app:cardBackgroundColor="#FEE2E2"
+                    app:cardCornerRadius="12dp"
+                    app:cardElevation="0dp">
+
+                    <ImageView
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:padding="10dp"
+                        android:src="@drawable/ic_trending_down"
+                        app:tint="#DC2626"/>
+                </com.google.android.material.card.MaterialCardView>
 
                 <LinearLayout
                     android:layout_width="wrap_content"
@@ -284,8 +749,8 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Highest Expense"
-                        android:textColor="@color/text_secondary"
+                        android:text="💸 Worst Month"
+                        android:textColor="#991B1B"
                         android:textSize="10sp"/>
 
                     <TextView
@@ -293,9 +758,10 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="N/A"
-                        android:textColor="@color/text_primary"
+                        android:textColor="#EF4444"
                         android:textSize="14sp"
-                        android:fontFamily="sans-serif-bold"/>
+                        android:fontFamily="sans-serif-bold"
+                        android:layout_marginTop="2dp"/>
                 </LinearLayout>
             </LinearLayout>
         </com.google.android.material.card.MaterialCardView>

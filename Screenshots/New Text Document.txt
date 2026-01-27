@@ -1,0 +1,838 @@
+package com.cscorner.financetracker;
+
+import android.animation.ObjectAnimator;
+import android.app.Activity;
+import android.content.Intent;
+import android.graphics.Color;
+import android.os.Build;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.GestureDetector;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
+import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.viewpager2.adapter.FragmentStateAdapter;
+import androidx.viewpager2.widget.ViewPager2;
+
+import com.cscorner.financetracker.adapter.TransactionAdapter;
+import com.cscorner.financetracker.fragments.ChartDailyFragment;
+import com.cscorner.financetracker.fragments.ChartMonthlyFragment;
+import com.cscorner.financetracker.fragments.ChartOverallFragment;
+import com.cscorner.financetracker.model.Transaction;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.card.MaterialCardView;
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.FirebaseFirestore;
+
+import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Locale;
+import java.util.Date;
+import java.text.ParseException;
+import java.util.Collections;
+
+import de.hdodenhof.circleimageview.CircleImageView;
+
+public class DashboardActivity extends AppCompatActivity {
+
+    // UI Elements
+    private Spinner spinnerMonth;
+    private TextView tvMonthlySalary, tvTotalBalance, tvTotalIncome, tvTotalExpense;
+    private TextView tvBudgetProgress, tvSpendingPercent;
+    private ProgressBar progressBudget;
+    private RecyclerView rvTransactions;
+    private TextView currentDate;
+    private ImageView previousDateButton, nextDateButton;
+    private MaterialButton btnToggleStats;
+    private CardView chartsCard;
+    private MaterialCardView dateNavigationCard, balanceCard;
+    private ConstraintLayout balanceCardInner;
+    private LinearLayout dateSwipeContainer, emptyStateContainer;
+    private TextView tvGreeting;
+    private ImageView btnCollapseCharts;
+    private View topBar;
+    private CircleImageView imgProfile;
+
+    // ViewPager and TabLayout for Charts
+    private ViewPager2 viewPagerCharts;
+    private TabLayout tabLayoutCharts;
+
+    // Firebase
+    private FirebaseAuth auth;
+    private FirebaseFirestore db;
+
+    // Adapter & Data
+    private TransactionAdapter transactionAdapter;
+    private List<Transaction> transactionList;
+
+    // Values
+    private double monthlySalary = 0;
+    private double totalIncome = 0;
+    private double totalExpense = 0;
+    private double totalMonthExpense = 0;
+    private double totalMonthIncome = 0;
+
+    // Calendar
+    private Calendar currentCalendar;
+
+    // Activity Result Launcher
+    private ActivityResultLauncher<Intent> addTransactionLauncher;
+
+    // Monthly transactions for charts
+    private final List<Transaction> monthTransactionList = new ArrayList<>();
+
+    // All transactions for overall chart
+    private final List<Transaction> allTransactionsList = new ArrayList<>();
+
+    // Swipe Gesture Detectors
+    private GestureDetector dateGestureDetector;
+    private GestureDetector balanceCardGestureDetector;
+
+    private static final int SWIPE_THRESHOLD = 100;
+    private static final int SWIPE_VELOCITY_THRESHOLD = 100;
+
+    // Load throttle
+    private long lastLoadTime = 0;
+    private static final long LOAD_COOLDOWN_MS = 500;
+
+    // Chart Fragments
+    private ChartDailyFragment chartDailyFragment;
+    private ChartMonthlyFragment chartMonthlyFragment;
+    private ChartOverallFragment chartOverallFragment;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setupEdgeToEdge();
+        setContentView(R.layout.activity_dashboard);
+        setupWindowInsets();
+
+        // Initialize Firebase
+        auth = FirebaseAuth.getInstance();
+        db = FirebaseFirestore.getInstance();
+
+        // Initialize UI
+        initializeViews();
+        setupRecyclerView();
+        setupSpinner();
+        setupActivityResultLauncher();
+        setupChartViewPager();
+        setupClickListeners();
+        setupSwipeGestures();
+        updateGreeting();
+
+        // Initial load
+        currentCalendar = Calendar.getInstance();
+        updateCurrentDate();
+
+        // Load all transactions for overall stats
+        loadAllTransactions();
+    }
+
+    private void setupEdgeToEdge() {
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(Color.parseColor("#4F46E5"));
+        }
+
+        WindowInsetsControllerCompat windowInsetsController =
+                WindowCompat.getInsetsController(getWindow(), getWindow().getDecorView());
+        if (windowInsetsController != null) {
+            windowInsetsController.setAppearanceLightStatusBars(false);
+        }
+    }
+
+    private void setupWindowInsets() {
+        View rootView = findViewById(android.R.id.content);
+        ViewCompat.setOnApplyWindowInsetsListener(rootView, (v, insets) -> {
+            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
+
+            if (topBar != null) {
+                topBar.setPadding(
+                        topBar.getPaddingLeft(),
+                        systemBars.top + 12,
+                        topBar.getPaddingRight(),
+                        topBar.getPaddingBottom()
+                );
+            }
+
+            return insets;
+        });
+    }
+
+    private void initializeViews() {
+        topBar = findViewById(R.id.topBar);
+        spinnerMonth = findViewById(R.id.spinnerMonth);
+        tvMonthlySalary = findViewById(R.id.tvMonthlySalary);
+        tvTotalBalance = findViewById(R.id.tvTotalBalance);
+        tvTotalIncome = findViewById(R.id.tvTotalIncome);
+        tvTotalExpense = findViewById(R.id.tvTotalExpense);
+        tvBudgetProgress = findViewById(R.id.tvBudgetProgress);
+        tvSpendingPercent = findViewById(R.id.tvSpendingPercent);
+        progressBudget = findViewById(R.id.progressBudget);
+        rvTransactions = findViewById(R.id.rvTransactions);
+        currentDate = findViewById(R.id.currentDate);
+        previousDateButton = findViewById(R.id.previousDateButton);
+        nextDateButton = findViewById(R.id.nextDateButton);
+        btnToggleStats = findViewById(R.id.btnToggleStats);
+        chartsCard = findViewById(R.id.chartsCard);
+        dateNavigationCard = findViewById(R.id.dateNavigationCard);
+        dateSwipeContainer = findViewById(R.id.dateSwipeContainer);
+        emptyStateContainer = findViewById(R.id.emptyStateContainer);
+        tvGreeting = findViewById(R.id.tvGreeting);
+        btnCollapseCharts = findViewById(R.id.btnCollapseCharts);
+        imgProfile = findViewById(R.id.imgProfile);
+
+        // Balance card views
+        balanceCard = findViewById(R.id.balanceCard);
+        balanceCardInner = findViewById(R.id.balanceCardInner);
+
+        // Chart ViewPager and TabLayout
+        viewPagerCharts = findViewById(R.id.viewPagerCharts);
+        tabLayoutCharts = findViewById(R.id.tabLayoutCharts);
+
+        if (topBar != null) {
+            topBar.post(() -> ViewCompat.requestApplyInsets(topBar));
+        }
+    }
+
+    private void setupRecyclerView() {
+        rvTransactions.setLayoutManager(new LinearLayoutManager(this));
+        rvTransactions.setHasFixedSize(true);
+        transactionList = new ArrayList<>();
+        transactionAdapter = new TransactionAdapter(transactionList);
+        rvTransactions.setAdapter(transactionAdapter);
+    }
+
+    private void setupSpinner() {
+        String[] months = {"January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"};
+        ArrayAdapter<String> monthAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_spinner_dropdown_item, months);
+        spinnerMonth.setAdapter(monthAdapter);
+
+        currentCalendar = Calendar.getInstance();
+        String currentMonth = new SimpleDateFormat("MMMM", Locale.getDefault())
+                .format(currentCalendar.getTime());
+        int currentMonthIndex = java.util.Arrays.asList(months).indexOf(currentMonth);
+        spinnerMonth.setSelection(currentMonthIndex);
+
+        spinnerMonth.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                currentCalendar.set(Calendar.MONTH, position);
+                updateCurrentDate();
+            }
+
+            @Override
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {
+            }
+        });
+    }
+
+    private void setupActivityResultLauncher() {
+        addTransactionLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> {
+                    if (result.getResultCode() == Activity.RESULT_OK) {
+                        String selectedMonth = result.getData() != null ?
+                                result.getData().getStringExtra("selectedMonth") :
+                                spinnerMonth.getSelectedItem().toString();
+                        spinnerMonth.setSelection(getMonthIndex(selectedMonth));
+                        updateCurrentDate();
+                        loadAllTransactions(); // Refresh overall stats
+                    }
+                }
+        );
+    }
+
+    private void setupChartViewPager() {
+        // Initialize fragments
+        chartDailyFragment = new ChartDailyFragment();
+        chartMonthlyFragment = new ChartMonthlyFragment();
+        chartOverallFragment = new ChartOverallFragment();
+
+        // Setup adapter
+        ChartsPagerAdapter adapter = new ChartsPagerAdapter(this);
+        viewPagerCharts.setAdapter(adapter);
+
+        // Link TabLayout with ViewPager2
+        new TabLayoutMediator(tabLayoutCharts, viewPagerCharts, (tab, position) -> {
+            switch (position) {
+                case 0:
+                    tab.setText("📅 Daily");
+                    break;
+                case 1:
+                    tab.setText("📊 Monthly");
+                    break;
+                case 2:
+                    tab.setText("📈 Overall");
+                    break;
+            }
+        }).attach();
+
+        // Disable swipe on ViewPager to avoid conflict with date swipe
+        viewPagerCharts.setUserInputEnabled(true);
+    }
+
+    private class ChartsPagerAdapter extends FragmentStateAdapter {
+
+        public ChartsPagerAdapter(AppCompatActivity activity) {
+            super(activity);
+        }
+
+        @Override
+        public Fragment createFragment(int position) {
+            switch (position) {
+                case 0:
+                    return chartDailyFragment;
+                case 1:
+                    return chartMonthlyFragment;
+                case 2:
+                    return chartOverallFragment;
+                default:
+                    return chartDailyFragment;
+            }
+        }
+
+        @Override
+        public int getItemCount() {
+            return 3;
+        }
+    }
+
+    private void setupClickListeners() {
+        // Profile icon -> Settings
+        imgProfile.setOnClickListener(v -> {
+            startActivity(new Intent(DashboardActivity.this, SettingsActivity.class));
+        });
+
+        // Toggle stats button
+        btnToggleStats.setOnClickListener(v -> toggleCharts());
+
+        // Collapse charts button
+        if (btnCollapseCharts != null) {
+            btnCollapseCharts.setOnClickListener(v -> {
+                chartsCard.setVisibility(View.GONE);
+                btnToggleStats.setText("📊 View Analytics");
+            });
+        }
+
+        // Date navigation buttons
+        previousDateButton.setOnClickListener(v -> animateDateChange(-1));
+        nextDateButton.setOnClickListener(v -> animateDateChange(1));
+
+        // Quick action buttons
+        findViewById(R.id.btnQuickIncome).setOnClickListener(v -> {
+            Intent intent = new Intent(DashboardActivity.this, AddTransactionActivity.class);
+            intent.putExtra("transactionType", "Income");
+            addTransactionLauncher.launch(intent);
+        });
+
+        findViewById(R.id.btnQuickExpense).setOnClickListener(v -> {
+            Intent intent = new Intent(DashboardActivity.this, AddTransactionActivity.class);
+            intent.putExtra("transactionType", "Expense");
+            addTransactionLauncher.launch(intent);
+        });
+
+        findViewById(R.id.btnQuickStats).setOnClickListener(v -> toggleCharts());
+
+        // Add first transaction button
+        findViewById(R.id.btnAddFirstTransaction).setOnClickListener(v -> {
+            Intent intent = new Intent(DashboardActivity.this, AddTransactionActivity.class);
+            addTransactionLauncher.launch(intent);
+        });
+    }
+
+    private void setupSwipeGestures() {
+        // Date Navigation Swipe Gesture
+        dateGestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                if (e1 == null || e2 == null) return false;
+
+                float diffX = e2.getX() - e1.getX();
+                float diffY = e2.getY() - e1.getY();
+
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                        if (diffX > 0) {
+                            animateDateChange(-1); // Swipe Right -> Previous date
+                        } else {
+                            animateDateChange(1); // Swipe Left -> Next date
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
+        // Balance Card Swipe Gesture (Same as date navigation)
+        balanceCardGestureDetector = new GestureDetector(this, new GestureDetector.SimpleOnGestureListener() {
+            @Override
+            public boolean onDown(MotionEvent e) {
+                return true;
+            }
+
+            @Override
+            public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                if (e1 == null || e2 == null) return false;
+
+                float diffX = e2.getX() - e1.getX();
+                float diffY = e2.getY() - e1.getY();
+
+                if (Math.abs(diffX) > Math.abs(diffY)) {
+                    if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
+                        if (diffX > 0) {
+                            animateBalanceCardSwipe(-1); // Swipe Right -> Previous date
+                        } else {
+                            animateBalanceCardSwipe(1); // Swipe Left -> Next date
+                        }
+                        return true;
+                    }
+                }
+                return false;
+            }
+        });
+
+        // Apply to date navigation card
+        View.OnTouchListener dateSwipeTouchListener = (v, event) -> dateGestureDetector.onTouchEvent(event);
+        dateNavigationCard.setOnTouchListener(dateSwipeTouchListener);
+        if (dateSwipeContainer != null) {
+            dateSwipeContainer.setOnTouchListener(dateSwipeTouchListener);
+        }
+        View dateDisplayContainer = findViewById(R.id.dateDisplayContainer);
+        if (dateDisplayContainer != null) {
+            dateDisplayContainer.setOnTouchListener(dateSwipeTouchListener);
+        }
+
+        // Apply to balance card
+        View.OnTouchListener balanceSwipeTouchListener = (v, event) -> balanceCardGestureDetector.onTouchEvent(event);
+        balanceCard.setOnTouchListener(balanceSwipeTouchListener);
+        if (balanceCardInner != null) {
+            balanceCardInner.setOnTouchListener(balanceSwipeTouchListener);
+        }
+    }
+
+    private void animateBalanceCardSwipe(int direction) {
+        // Slide animation for balance card
+        float startX = 0f;
+        float endX = direction > 0 ? -50f : 50f;
+
+        ObjectAnimator slideOut = ObjectAnimator.ofFloat(balanceCardInner, "translationX", startX, endX);
+        slideOut.setDuration(100);
+        slideOut.start();
+
+        balanceCardInner.postDelayed(() -> {
+            changeDate(direction);
+
+            // Slide back animation
+            float returnStartX = direction > 0 ? 50f : -50f;
+            ObjectAnimator slideIn = ObjectAnimator.ofFloat(balanceCardInner, "translationX", returnStartX, 0f);
+            slideIn.setDuration(150);
+            slideIn.start();
+        }, 100);
+    }
+
+    private void animateDateChange(int direction) {
+        ObjectAnimator fadeOut = ObjectAnimator.ofFloat(currentDate, "alpha", 1f, 0f);
+        fadeOut.setDuration(100);
+        fadeOut.start();
+
+        currentDate.postDelayed(() -> {
+            changeDate(direction);
+
+            ObjectAnimator fadeIn = ObjectAnimator.ofFloat(currentDate, "alpha", 0f, 1f);
+            fadeIn.setDuration(100);
+            fadeIn.start();
+        }, 100);
+    }
+
+    private void updateGreeting() {
+        Calendar calendar = Calendar.getInstance();
+        int hour = calendar.get(Calendar.HOUR_OF_DAY);
+
+        String greeting;
+        if (hour >= 5 && hour < 12) {
+            greeting = "Good Morning! ☀️";
+        } else if (hour >= 12 && hour < 17) {
+            greeting = "Good Afternoon! 🌤️";
+        } else if (hour >= 17 && hour < 21) {
+            greeting = "Good Evening! 🌅";
+        } else {
+            greeting = "Good Night! 🌙";
+        }
+
+        if (tvGreeting != null) {
+            tvGreeting.setText(greeting);
+        }
+    }
+
+    private void toggleCharts() {
+        if (chartsCard.getVisibility() == View.VISIBLE) {
+            chartsCard.setVisibility(View.GONE);
+            btnToggleStats.setText("📊 View Analytics");
+        } else {
+            chartsCard.setVisibility(View.VISIBLE);
+            btnToggleStats.setText("📉 Hide Analytics");
+            updateChartFragments();
+        }
+    }
+
+    private void updateChartFragments() {
+        // Update Daily Chart Fragment
+        if (chartDailyFragment != null && chartDailyFragment.isAdded()) {
+            chartDailyFragment.updateChart(monthTransactionList, totalIncome, totalExpense, currentCalendar);
+        }
+
+        // Update Monthly Chart Fragment
+        if (chartMonthlyFragment != null && chartMonthlyFragment.isAdded()) {
+            chartMonthlyFragment.updateChart(db, auth.getCurrentUser().getEmail());
+        }
+
+        // Update Overall Chart Fragment
+        if (chartOverallFragment != null && chartOverallFragment.isAdded()) {
+            chartOverallFragment.updateChart(allTransactionsList);
+        }
+    }
+
+    private void loadAllTransactions() {
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser == null || currentUser.getEmail() == null) return;
+
+        String email = currentUser.getEmail();
+        allTransactionsList.clear();
+
+        String[] months = {"January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"};
+
+        for (String month : months) {
+            db.collection("Users").document(email)
+                    .collection("Financial Details")
+                    .document("Monthly Expenditure")
+                    .collection(month)
+                    .get()
+                    .addOnSuccessListener(querySnapshot -> {
+                        for (QueryDocumentSnapshot doc : querySnapshot) {
+                            try {
+                                String date = doc.getString("date");
+                                String type = doc.getString("type") != null ? doc.getString("type").trim() : "Expense";
+                                String note = doc.getString("note") != null ? doc.getString("note") : "";
+                                String time = doc.getString("time") != null ? doc.getString("time") : "";
+                                double amount = 0.0;
+
+                                Object amtObj = doc.get("amount");
+                                if (amtObj instanceof Number) {
+                                    amount = ((Number) amtObj).doubleValue();
+                                } else if (amtObj instanceof String) {
+                                    try {
+                                        amount = Double.parseDouble((String) amtObj);
+                                    } catch (Exception ex) {
+                                        amount = 0.0;
+                                    }
+                                }
+
+                                boolean isIncome = type.equalsIgnoreCase("Income");
+                                Transaction txn = new Transaction(amount, type, date, time, note, isIncome);
+                                allTransactionsList.add(txn);
+
+                            } catch (Exception e) {
+                                Log.e("Dashboard", "Error processing transaction", e);
+                            }
+                        }
+
+                        // Update overall chart if visible
+                        if (chartOverallFragment != null && chartOverallFragment.isAdded()) {
+                            chartOverallFragment.updateChart(allTransactionsList);
+                        }
+                    });
+        }
+    }
+
+    private void loadDashboardData(String month, String selectedDateOnly) {
+        long now = System.currentTimeMillis();
+        if (now - lastLoadTime < LOAD_COOLDOWN_MS) {
+            Log.d("Dashboard", "Skipping duplicate LOAD...");
+            return;
+        }
+        lastLoadTime = now;
+        Log.d("Dashboard", "Loading data for month=" + month + " date=" + selectedDateOnly);
+
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser == null) {
+            Toast.makeText(this, "No user logged in!", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String email = currentUser.getEmail();
+        if (email == null || email.isEmpty()) {
+            Toast.makeText(this, "User email not found", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // Clear previous data
+        transactionList.clear();
+        transactionAdapter.notifyDataSetChanged();
+        monthTransactionList.clear();
+        totalIncome = 0;
+        totalExpense = 0;
+        totalMonthExpense = 0;
+        totalMonthIncome = 0;
+
+        // Fetch salary first
+        db.collection("Users").document(email)
+                .collection("Personal Details").document("Info")
+                .get()
+                .addOnSuccessListener(doc -> {
+                    if (doc.exists()) {
+                        String salaryStr = doc.getString("Monthly Salary");
+                        try {
+                            monthlySalary = salaryStr != null ? Double.parseDouble(salaryStr) : 0.0;
+                        } catch (NumberFormatException e) {
+                            monthlySalary = 0.0;
+                        }
+                    } else {
+                        monthlySalary = 0.0;
+                    }
+
+                    loadTransactions(email, month, selectedDateOnly);
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Error fetching salary", Toast.LENGTH_SHORT).show();
+                    loadTransactions(email, month, selectedDateOnly);
+                });
+    }
+
+    private void loadTransactions(String email, String month, String selectedDateOnly) {
+        db.collection("Users").document(email)
+                .collection("Financial Details")
+                .document("Monthly Expenditure")
+                .collection(month)
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault());
+                    Date selectedDate;
+                    try {
+                        selectedDate = sdf.parse(selectedDateOnly);
+                    } catch (ParseException e) {
+                        Toast.makeText(this, "Date parse error", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    for (QueryDocumentSnapshot doc : querySnapshot) {
+                        try {
+                            String date = doc.getString("date");
+                            if (date == null) continue;
+
+                            String type = doc.getString("type") != null ? doc.getString("type").trim() : "Expense";
+                            String note = doc.getString("note") != null ? doc.getString("note") : "";
+                            String time = doc.getString("time") != null ? doc.getString("time") : "";
+                            double amount = 0.0;
+
+                            Object amtObj = doc.get("amount");
+                            if (amtObj instanceof Number) {
+                                amount = ((Number) amtObj).doubleValue();
+                            } else if (amtObj instanceof String) {
+                                try {
+                                    amount = Double.parseDouble((String) amtObj);
+                                } catch (Exception ex) {
+                                    amount = 0.0;
+                                }
+                            }
+
+                            boolean isIncome = type.equalsIgnoreCase("Income");
+
+                            Transaction txn = new Transaction(amount, type, date, time, note, isIncome);
+                            txn.setTransactionId(doc.getId());
+
+                            // Add to month list
+                            monthTransactionList.add(txn);
+
+                            // Track totals
+                            if (isIncome) {
+                                totalMonthIncome += amount;
+                            } else {
+                                totalMonthExpense += amount;
+                            }
+
+                            // For selected date
+                            Date txnDate = null;
+                            try {
+                                txnDate = sdf.parse(date);
+                            } catch (ParseException ignored) {
+                            }
+
+                            if (txnDate != null && sdf.format(txnDate).equals(selectedDateOnly)) {
+                                transactionList.add(txn);
+                                if (isIncome) totalIncome += amount;
+                                else totalExpense += amount;
+                            }
+
+                        } catch (Exception e) {
+                            Log.e("Dashboard", "Error processing transaction doc", e);
+                        }
+                    }
+
+                    // Compute balance
+                    double balance = computeBalanceUpToDate(monthTransactionList, selectedDate);
+
+                    // Update UI
+                    updateDashboardUI(balance);
+                    transactionAdapter.notifyDataSetChanged();
+                    updateEmptyState();
+
+                    // Update charts if visible
+                    updateChartFragments();
+
+                })
+                .addOnFailureListener(e -> {
+                    Toast.makeText(this, "Failed to fetch transactions", Toast.LENGTH_SHORT).show();
+                    Log.e("Dashboard", "Transaction fetch error", e);
+                    updateEmptyState();
+                });
+    }
+
+    private double computeBalanceUpToDate(List<Transaction> monthTxns, Date selectedDate) {
+        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault());
+        double balance = monthlySalary;
+
+        try {
+            Collections.sort(monthTxns, (a, b) -> {
+                try {
+                    Date da = sdf.parse(a.getDate());
+                    Date db = sdf.parse(b.getDate());
+                    long ra = da != null ? da.getTime() : 0;
+                    long rb = db != null ? db.getTime() : 0;
+                    return Long.compare(ra, rb);
+                } catch (Exception e) {
+                    return 0;
+                }
+            });
+        } catch (Exception ignored) {
+        }
+
+        for (Transaction t : monthTxns) {
+            try {
+                Date d = sdf.parse(t.getDate());
+                if (d == null) continue;
+                if (!d.after(selectedDate)) {
+                    if (t.isIncome()) balance += t.getAmount();
+                    else balance -= t.getAmount();
+                }
+            } catch (ParseException ignored) {
+            }
+        }
+        return balance;
+    }
+
+    private void updateDashboardUI(double currentBalance) {
+        tvMonthlySalary.setText(String.format(Locale.getDefault(), "Monthly Salary: ₹%.0f", monthlySalary));
+        tvTotalBalance.setText(String.format(Locale.getDefault(), "₹ %.2f", currentBalance));
+        tvTotalIncome.setText(String.format(Locale.getDefault(), "+ ₹%.0f", totalIncome));
+        tvTotalExpense.setText(String.format(Locale.getDefault(), "- ₹%.0f", totalExpense));
+        updateSpendingProgress();
+    }
+
+    private void updateSpendingProgress() {
+        if (monthlySalary > 0) {
+            int percentage = (int) ((totalMonthExpense / monthlySalary) * 100);
+            percentage = Math.min(percentage, 100);
+
+            ObjectAnimator progressAnimator = ObjectAnimator.ofInt(progressBudget, "progress", percentage);
+            progressAnimator.setDuration(500);
+            progressAnimator.start();
+
+            tvBudgetProgress.setText(String.format(Locale.getDefault(),
+                    "₹%.0f / ₹%.0f", totalMonthExpense, monthlySalary));
+
+            tvSpendingPercent.setText(String.format(Locale.getDefault(),
+                    "%d%% of salary spent", percentage));
+
+            if (percentage >= 90) {
+                progressBudget.setProgressDrawable(getResources().getDrawable(R.drawable.progress_budget_danger));
+            } else if (percentage >= 70) {
+                progressBudget.setProgressDrawable(getResources().getDrawable(R.drawable.progress_budget_warning));
+            } else {
+                progressBudget.setProgressDrawable(getResources().getDrawable(R.drawable.progress_budget));
+            }
+        } else {
+            progressBudget.setProgress(0);
+            tvBudgetProgress.setText("₹0 / ₹0");
+            tvSpendingPercent.setText("Set your salary in settings");
+        }
+    }
+
+    private void updateEmptyState() {
+        if (transactionList.isEmpty()) {
+            emptyStateContainer.setVisibility(View.VISIBLE);
+            rvTransactions.setVisibility(View.GONE);
+        } else {
+            emptyStateContainer.setVisibility(View.GONE);
+            rvTransactions.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void updateCurrentDate() {
+        SimpleDateFormat displayFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
+        SimpleDateFormat queryFormat = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault());
+        String displayDate = displayFormat.format(currentCalendar.getTime());
+        String selectedDateOnly = queryFormat.format(currentCalendar.getTime());
+        currentDate.setText(displayDate);
+
+        int currentMonth = currentCalendar.get(Calendar.MONTH);
+        if (spinnerMonth.getSelectedItemPosition() != currentMonth) {
+            spinnerMonth.setSelection(currentMonth, false);
+        }
+
+        String selectedMonth = spinnerMonth.getSelectedItem().toString();
+        loadDashboardData(selectedMonth, selectedDateOnly);
+    }
+
+    private void changeDate(int offset) {
+        currentCalendar.add(Calendar.DAY_OF_MONTH, offset);
+        updateCurrentDate();
+    }
+
+    private int getMonthIndex(String monthName) {
+        String[] months = {"January", "February", "March", "April", "May", "June",
+                "July", "August", "September", "October", "November", "December"};
+        return java.util.Arrays.asList(months).indexOf(monthName);
+    }
+}
