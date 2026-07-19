@@ -386,6 +386,15 @@ public class DashboardActivity extends AppCompatActivity {
             settingsLauncher.launch(new Intent(DashboardActivity.this, SettingsActivity.class));
         });
 
+        // Add Important Notes button listener
+        LinearLayout btnImportantNotes = findViewById(R.id.btnImportantNotes);
+        if (btnImportantNotes != null) {
+            btnImportantNotes.setOnClickListener(v -> {
+                animateClick(v);
+                startActivity(new Intent(DashboardActivity.this, NotesActivity.class));
+            });
+        }
+
         // Collapse charts button
         if (btnCollapseCharts != null) {
             btnCollapseCharts.setOnClickListener(v -> {
@@ -995,15 +1004,25 @@ public class DashboardActivity extends AppCompatActivity {
                 .get()
                 .addOnSuccessListener(doc -> {
                     if (doc.exists()) {
-                        String salaryStr = doc.getString("Monthly Salary");
-                        try {
-                            monthlySalary = salaryStr != null ? Double.parseDouble(salaryStr) : 0.0;
-                        } catch (NumberFormatException e) {
+
+                        Object salaryObj = doc.get("Monthly Salary");
+
+                        if (salaryObj instanceof Number) {
+                            monthlySalary = ((Number) salaryObj).doubleValue();
+                        } else if (salaryObj instanceof String) {
+                            try {
+                                monthlySalary = Double.parseDouble((String) salaryObj);
+                            } catch (Exception e) {
+                                monthlySalary = 0.0;
+                            }
+                        } else {
                             monthlySalary = 0.0;
                         }
+
                     } else {
                         monthlySalary = 0.0;
                     }
+
 
                     loadTransactions(email, month, selectedDateOnly);
                 })
