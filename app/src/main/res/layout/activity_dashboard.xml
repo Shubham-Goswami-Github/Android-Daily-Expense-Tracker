@@ -29,9 +29,7 @@
                 app:layout_constraintBottom_toBottomOf="@id/balanceCard"
                 android:layout_marginBottom="-60dp"/>
 
-            <!-- Top Bar with Profile -->
-
-            <!-- Swipeable Date Navigation Card -->
+            <!-- ======================= TOP BAR ======================= -->
             <androidx.constraintlayout.widget.ConstraintLayout
                 android:id="@+id/topBar"
                 android:layout_width="match_parent"
@@ -39,8 +37,7 @@
                 android:layout_marginTop="16dp"
                 android:paddingHorizontal="20dp"
                 android:paddingBottom="12dp"
-                app:layout_constraintTop_toTopOf="parent"
-                tools:layout_editor_absoluteX="1dp">
+                app:layout_constraintTop_toTopOf="parent">
 
                 <!-- Logo and App Name -->
                 <LinearLayout
@@ -109,10 +106,10 @@
                             android:clickable="true"
                             android:focusable="true"
                             android:padding="6dp"
+                            android:contentDescription="Notifications"
                             android:src="@drawable/ic_notification"
                             app:tint="#FFFFFF" />
 
-                        <!-- Notification Badge -->
                         <TextView
                             android:id="@+id/tvNotificationBadge"
                             android:layout_width="16dp"
@@ -134,6 +131,7 @@
                         android:layout_height="40dp"
                         android:clickable="true"
                         android:focusable="true"
+                        android:contentDescription="Profile / Settings"
                         android:foreground="?attr/selectableItemBackgroundBorderless"
                         android:src="@drawable/default_avatar"
                         app:civ_border_color="#FFFFFF"
@@ -141,6 +139,7 @@
                 </LinearLayout>
             </androidx.constraintlayout.widget.ConstraintLayout>
 
+            <!-- ======================= DATE NAVIGATION ======================= -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/dateNavigationCard"
                 android:layout_width="0dp"
@@ -169,6 +168,7 @@
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:padding="10dp"
+                        android:contentDescription="Previous day"
                         android:src="@drawable/ic_chevron_left"
                         android:background="@drawable/bg_ripple_circle"
                         android:clickable="true"
@@ -181,7 +181,10 @@
                         android:layout_weight="1"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center">
+                        android:gravity="center"
+                        android:clickable="true"
+                        android:focusable="true"
+                        android:background="@drawable/bg_ripple_rounded">
 
                         <ImageView
                             android:layout_width="18dp"
@@ -189,7 +192,6 @@
                             android:src="@drawable/ic_calendar"
                             app:tint="@color/primary_blue"/>
 
-                        <!-- Current Date TextView -->
                         <TextView
                             android:id="@+id/currentDate"
                             android:layout_width="wrap_content"
@@ -207,6 +209,7 @@
                         android:layout_width="40dp"
                         android:layout_height="40dp"
                         android:padding="10dp"
+                        android:contentDescription="Next day"
                         android:src="@drawable/ic_chevron_right"
                         android:background="@drawable/bg_ripple_circle"
                         android:clickable="true"
@@ -224,7 +227,7 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@id/dateNavigationCard"/>
 
-            <!-- Main Balance Card - SWIPEABLE -->
+            <!-- ======================= BALANCE CARD (SWIPEABLE) ======================= -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/balanceCard"
                 android:layout_width="match_parent"
@@ -282,25 +285,51 @@
                         android:id="@+id/tvBalanceLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
+                        android:layout_marginTop="14dp"
                         android:text="Current Balance"
                         android:textColor="#E0E7FF"
                         android:textSize="13sp"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toBottomOf="@id/swipeHintContainer"/>
 
-                    <!-- Eye Toggle -->
-                    <ImageView
-                        android:id="@+id/btnToggleBalance"
-                        android:layout_width="26dp"
-                        android:layout_height="26dp"
-                        android:src="@drawable/ic_eye_visible"
-                        android:padding="2dp"
-                        android:clickable="true"
-                        android:focusable="true"
-                        app:tint="#E0E7FF"
+                    <!-- Action icons: Refresh + Eye Toggle -->
+                    <LinearLayout
+                        android:id="@+id/balanceActionIcons"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
                         app:layout_constraintEnd_toEndOf="parent"
-                        app:layout_constraintTop_toTopOf="@id/tvBalanceLabel"/>
+                        app:layout_constraintTop_toTopOf="@id/tvBalanceLabel"
+                        app:layout_constraintBottom_toBottomOf="@id/tvBalanceLabel">
+
+                        <!-- Refresh Button -->
+                        <ImageView
+                            android:id="@+id/btnRefreshDashboard"
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:padding="5dp"
+                            android:src="@drawable/ic_refresh"
+                            android:background="@drawable/bg_circle_white_10"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:contentDescription="Refresh dashboard"
+                            app:tint="#FFFFFF"
+                            android:layout_marginEnd="8dp"/>
+
+                        <!-- Eye Toggle -->
+                        <ImageView
+                            android:id="@+id/btnToggleBalance"
+                            android:layout_width="30dp"
+                            android:layout_height="30dp"
+                            android:padding="5dp"
+                            android:src="@drawable/ic_eye_visible"
+                            android:background="@drawable/bg_circle_white_10"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:contentDescription="Toggle balance visibility"
+                            app:tint="#FFFFFF"/>
+                    </LinearLayout>
 
                     <!-- Balance Amount -->
                     <TextView
@@ -321,10 +350,11 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:layout_marginTop="6dp"
+                        android:layout_marginTop="8dp"
                         app:layout_constraintStart_toStartOf="parent"
                         app:layout_constraintTop_toBottomOf="@id/tvTotalBalance">
 
+                        <!-- Salary Badge -->
                         <LinearLayout
                             android:id="@+id/salaryContainer"
                             android:layout_width="wrap_content"
@@ -333,7 +363,7 @@
                             android:gravity="center_vertical"
                             android:background="@drawable/bg_salary_badge"
                             android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp">
+                            android:paddingVertical="5dp">
 
                             <ImageView
                                 android:layout_width="14dp"
@@ -352,6 +382,7 @@
                                 android:layout_marginStart="4dp"/>
                         </LinearLayout>
 
+                        <!-- Notes Badge - Premium gradient look -->
                         <LinearLayout
                             android:id="@+id/btnImportantNotes"
                             android:layout_width="wrap_content"
@@ -359,11 +390,12 @@
                             android:orientation="horizontal"
                             android:gravity="center_vertical"
                             android:layout_marginStart="8dp"
-                            android:background="@drawable/bg_notes_badge"
+                            android:background="@drawable/bg_notes_badge_gradient"
                             android:paddingHorizontal="10dp"
-                            android:paddingVertical="4dp"
+                            android:paddingVertical="5dp"
                             android:clickable="true"
-                            android:focusable="true">
+                            android:focusable="true"
+                            android:elevation="2dp">
 
                             <ImageView
                                 android:layout_width="14dp"
@@ -424,7 +456,6 @@
                             android:max="100"
                             android:progressDrawable="@drawable/progress_budget"/>
 
-                        <!-- Spending Percentage -->
                         <TextView
                             android:id="@+id/tvSpendingPercent"
                             android:layout_width="wrap_content"
@@ -555,7 +586,7 @@
                 </androidx.constraintlayout.widget.ConstraintLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Quick Actions -->
+            <!-- ======================= QUICK ACTIONS ======================= -->
             <LinearLayout
                 android:id="@+id/quickActionsContainer"
                 android:layout_width="match_parent"
@@ -681,7 +712,7 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- IMPROVED Statistics Section -->
+            <!-- ======================= ANALYTICS / CHARTS ======================= -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/chartsCard"
                 android:layout_width="match_parent"
@@ -699,7 +730,6 @@
                     android:layout_height="wrap_content"
                     android:orientation="vertical">
 
-                    <!-- Stats Header -->
                     <androidx.constraintlayout.widget.ConstraintLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -744,7 +774,6 @@
                             app:layout_constraintBottom_toBottomOf="parent"/>
                     </androidx.constraintlayout.widget.ConstraintLayout>
 
-                    <!-- Tab Layout for Chart Types -->
                     <com.google.android.material.tabs.TabLayout
                         android:id="@+id/tabLayoutCharts"
                         android:layout_width="match_parent"
@@ -759,7 +788,6 @@
                         app:tabTextAppearance="@style/TabTextAppearance"
                         app:tabRippleColor="@color/primary_blue_light"/>
 
-                    <!-- ViewPager for Charts -->
                     <androidx.viewpager2.widget.ViewPager2
                         android:id="@+id/viewPagerCharts"
                         android:layout_width="match_parent"
@@ -769,7 +797,7 @@
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Recent Transactions Section -->
+            <!-- ======================= RECENT TRANSACTIONS ======================= -->
             <LinearLayout
                 android:id="@+id/recentTransactionsHeader"
                 android:layout_width="match_parent"
@@ -885,5 +913,26 @@
             </LinearLayout>
         </androidx.constraintlayout.widget.ConstraintLayout>
     </androidx.core.widget.NestedScrollView>
+
+    <!-- AI Assistant FAB - Bottom Right -->
+    <!-- AI Assistant FAB - Bottom Right -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnAiAssistant"
+        android:layout_width="76dp"
+        android:layout_height="76dp"
+        android:layout_gravity="bottom|end"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="Open AI Finance Assistant"
+        android:src="@drawable/ic_ai_bot_2"
+        android:backgroundTint="@android:color/transparent"
+        app:backgroundTint="@android:color/transparent"
+        app:tint="@null"
+        app:elevation="0dp"
+        app:pressedTranslationZ="0dp"
+        app:borderWidth="0dp"
+        app:rippleColor="@android:color/transparent"
+        app:fabCustomSize="76dp"
+        app:maxImageSize="70dp" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

@@ -1,9 +1,9 @@
 package com.cscorner.financetracker;
-
+import android.content.Intent;
+import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -85,6 +85,7 @@ public class DashboardActivity extends AppCompatActivity {
     private LinearLayout dateSwipeContainer, emptyStateContainer, swipeHintContainer;
     private TextView tvGreeting;
     private ImageView btnCollapseCharts, btnToggleBalance;
+    private ImageView btnRefreshDashboard; // Refresh button near balance
     private View topBar;
     private CircleImageView imgProfile;
     // Swipe tracking variables
@@ -117,6 +118,7 @@ public class DashboardActivity extends AppCompatActivity {
     // Activity Result Launcher
     private ActivityResultLauncher<Intent> addTransactionLauncher;
     private ActivityResultLauncher<Intent> settingsLauncher;
+    private ActivityResultLauncher<Intent> aiAssistantLauncher; // for chatbot refresh
 
     // Monthly transactions for charts
     private final List<Transaction> monthTransactionList = new ArrayList<>();
@@ -136,6 +138,18 @@ public class DashboardActivity extends AppCompatActivity {
     private volatile boolean isLoading = false;
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
+    // NEW: Request tokens to prevent duplicate/stale concurrent Firestore loads
+    // from corrupting shared lists & totals (fixes the "double transactions" bug
+    // that happened when the AI chatbot/settings/etc. triggered refresh twice
+    // in quick succession).
+    private final AtomicInteger dashboardRequestId = new AtomicInteger(0);
+    private final AtomicInteger allTransactionsRequestId = new AtomicInteger(0);
+
+    // NEW: Debounce handle for refreshAllData() so multiple rapid refresh
+    // triggers (e.g. onActivityResult + onResume firing back-to-back) only
+    // result in a single actual refresh.
+    private Runnable pendingRefreshRunnable;
+
     // Chart Fragments
     private ChartDailyFragment chartDailyFragment;
     private ChartMonthlyFragment chartMonthlyFragment;
@@ -148,13 +162,16 @@ public class DashboardActivity extends AppCompatActivity {
     // Animation flag
     private boolean isAnimating = false;
 
+    // Flag to avoid double-loading data on very first onResume (onCreate already loads)
+    private boolean isFirstResume = true;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setupEdgeToEdge();
         setContentView(R.layout.activity_dashboard);
         setupWindowInsets();
-
+        animateAiAssistant();
         // Initialize Firebase
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -180,6 +197,32 @@ public class DashboardActivity extends AppCompatActivity {
         hideSwipeHintAfterDelay();
     }
 
+    private void animateAiAssistant() {
+        FloatingActionButton aiButton =
+                findViewById(R.id.btnAiAssistant);
+
+        if (aiButton == null) return;
+
+        aiButton.animate()
+                .translationX(7f)
+                .setDuration(650)
+                .setInterpolator(
+                        new android.view.animation.AccelerateDecelerateInterpolator())
+                .withEndAction(() -> aiButton.animate()
+                        .translationX(-7f)
+                        .setDuration(650)
+                        .setInterpolator(
+                                new android.view.animation.AccelerateDecelerateInterpolator())
+                        .withEndAction(() -> aiButton.animate()
+                                .translationX(0f)
+                                .setDuration(650)
+                                .setInterpolator(
+                                        new android.view.animation.AccelerateDecelerateInterpolator())
+                                .withEndAction(this::animateAiAssistant)
+                                .start())
+                        .start())
+                .start();
+    }
     private void setupEdgeToEdge() {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
 
@@ -237,6 +280,7 @@ public class DashboardActivity extends AppCompatActivity {
         imgProfile = findViewById(R.id.imgProfile);
         btnToggleBalance = findViewById(R.id.btnToggleBalance);
         swipeHintContainer = findViewById(R.id.swipeHintContainer);
+        btnRefreshDashboard = findViewById(R.id.btnRefreshDashboard);
 
         // Balance card views
         balanceCard = findViewById(R.id.balanceCard);
@@ -314,13 +358,46 @@ public class DashboardActivity extends AppCompatActivity {
                     refreshAllData();
                 }
         );
+
+        // AI Assistant (chatbot) launcher -> refresh when it closes
+        aiAssistantLauncher = registerForActivityResult(
+                new ActivityResultContracts.StartActivityForResult(),
+                result -> refreshAllData()
+        );
     }
 
+    /**
+     * FIXED: Debounced refresh.
+     *
+     * Previously, closing the AI chatbot (or returning from Settings/AddTransaction)
+     * could trigger refreshAllData() twice in very quick succession - once from the
+     * ActivityResultLauncher callback and once from onResume(). Because this method
+     * force-reset "isLoading = false", both calls were able to start their own
+     * concurrent Firestore loads, and both would write into the SAME shared lists
+     * (transactionList, monthTransactionList, allTransactionsList) and the SAME
+     * running totals (totalIncome, totalExpense, etc.) - causing every transaction
+     * to appear twice and every total to be doubled.
+     *
+     * By debouncing here, multiple refresh calls that happen within a very short
+     * window collapse into a single actual refresh. Combined with the request-token
+     * guards added in loadDashboardData()/loadTransactions()/loadAllTransactions(),
+     * this completely eliminates the duplication, even if a refresh is ever
+     * triggered multiple times for any other reason in the future.
+     */
     private void refreshAllData() {
-        isLoading = false; // Reset loading flag to force refresh
-        updateCurrentDate();
-        loadAllTransactions();
-        updateGreeting();
+        if (pendingRefreshRunnable != null) {
+            mainHandler.removeCallbacks(pendingRefreshRunnable);
+        }
+
+        pendingRefreshRunnable = () -> {
+            isLoading = false; // Reset loading flag to force refresh
+            updateCurrentDate();
+            loadAllTransactions();
+            updateGreeting();
+            pendingRefreshRunnable = null;
+        };
+
+        mainHandler.postDelayed(pendingRefreshRunnable, 80);
     }
 
     private void setupChartViewPager() {
@@ -386,6 +463,20 @@ public class DashboardActivity extends AppCompatActivity {
             settingsLauncher.launch(new Intent(DashboardActivity.this, SettingsActivity.class));
         });
 
+        // AI Finance Assistant button
+        FloatingActionButton btnAiAssistant = findViewById(R.id.btnAiAssistant);
+
+        if (btnAiAssistant != null) {
+            btnAiAssistant.setOnClickListener(v -> {
+                animateClick(v);
+                Intent intent = new Intent(
+                        DashboardActivity.this,
+                        AiAssistantActivity.class
+                );
+                aiAssistantLauncher.launch(intent);
+            });
+        }
+
         // Add Important Notes button listener
         LinearLayout btnImportantNotes = findViewById(R.id.btnImportantNotes);
         if (btnImportantNotes != null) {
@@ -408,6 +499,16 @@ public class DashboardActivity extends AppCompatActivity {
             btnToggleBalance.setOnClickListener(v -> {
                 animateClick(v);
                 toggleBalanceVisibility();
+            });
+        }
+
+        // Refresh button near balance
+        if (btnRefreshDashboard != null) {
+            btnRefreshDashboard.setOnClickListener(v -> {
+                animateClick(v);
+                rotateRefreshIcon(v);
+                refreshAllData();
+                Toast.makeText(this, "Refreshing...", Toast.LENGTH_SHORT).show();
             });
         }
 
@@ -467,9 +568,6 @@ public class DashboardActivity extends AppCompatActivity {
         if (btnSeeAll != null) {
             btnSeeAll.setOnClickListener(v -> {
                 animateClick(v);
-                // Navigate to all transactions activity if you have one
-                // Intent intent = new Intent(this, AllTransactionsActivity.class);
-                // startActivity(intent);
                 Toast.makeText(this, "Coming soon!", Toast.LENGTH_SHORT).show();
             });
         }
@@ -497,10 +595,23 @@ public class DashboardActivity extends AppCompatActivity {
         bounce.start();
     }
 
+    private void rotateRefreshIcon(View view) {
+        ObjectAnimator rotate = ObjectAnimator.ofFloat(view, "rotation", 0f, 360f);
+        rotate.setDuration(500);
+        rotate.setInterpolator(new AccelerateDecelerateInterpolator());
+        rotate.start();
+    }
+
     private void showDatePicker() {
         android.app.DatePickerDialog datePickerDialog = new android.app.DatePickerDialog(
                 this,
                 (view, year, month, dayOfMonth) -> {
+                    Calendar picked = Calendar.getInstance();
+                    picked.set(year, month, dayOfMonth);
+                    if (isFutureDate(picked)) {
+                        Toast.makeText(this, "Cannot select a future date", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
                     currentCalendar.set(Calendar.YEAR, year);
                     currentCalendar.set(Calendar.MONTH, month);
                     currentCalendar.set(Calendar.DAY_OF_MONTH, dayOfMonth);
@@ -510,6 +621,7 @@ public class DashboardActivity extends AppCompatActivity {
                 currentCalendar.get(Calendar.MONTH),
                 currentCalendar.get(Calendar.DAY_OF_MONTH)
         );
+        datePickerDialog.getDatePicker().setMaxDate(System.currentTimeMillis());
         datePickerDialog.show();
     }
 
@@ -549,7 +661,6 @@ public class DashboardActivity extends AppCompatActivity {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                // Return true if horizontal scroll
                 return Math.abs(distanceX) > Math.abs(distanceY);
             }
 
@@ -561,14 +672,11 @@ public class DashboardActivity extends AppCompatActivity {
                 float diffX = e2.getX() - e1.getX();
                 float diffY = e2.getY() - e1.getY();
 
-                // Check if horizontal swipe
                 if (Math.abs(diffX) > Math.abs(diffY)) {
                     if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                         if (diffX > 0) {
-                            // Swipe Right -> Previous date
                             animateDateChange(-1);
                         } else {
-                            // Swipe Left -> Next date
                             animateDateChange(1);
                         }
                         return true;
@@ -587,7 +695,6 @@ public class DashboardActivity extends AppCompatActivity {
 
             @Override
             public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-                // Return true if horizontal scroll
                 return Math.abs(distanceX) > Math.abs(distanceY);
             }
 
@@ -599,14 +706,11 @@ public class DashboardActivity extends AppCompatActivity {
                 float diffX = e2.getX() - e1.getX();
                 float diffY = e2.getY() - e1.getY();
 
-                // Check if horizontal swipe
                 if (Math.abs(diffX) > Math.abs(diffY)) {
                     if (Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                         if (diffX > 0) {
-                            // Swipe Right -> Previous date
                             animateBalanceCardSwipe(-1);
                         } else {
-                            // Swipe Left -> Next date
                             animateBalanceCardSwipe(1);
                         }
                         return true;
@@ -634,15 +738,12 @@ public class DashboardActivity extends AppCompatActivity {
         view.setOnTouchListener((v, event) -> {
             switch (event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
-                    // Store initial touch position
                     touchStartX = event.getX();
                     touchStartY = event.getY();
                     isHorizontalSwipe = false;
 
-                    // Visual feedback
                     v.setAlpha(0.95f);
 
-                    // Initially request parent to not intercept
                     v.getParent().requestDisallowInterceptTouchEvent(true);
                     break;
 
@@ -650,14 +751,11 @@ public class DashboardActivity extends AppCompatActivity {
                     float deltaX = Math.abs(event.getX() - touchStartX);
                     float deltaY = Math.abs(event.getY() - touchStartY);
 
-                    // Determine if this is a horizontal swipe
                     if (deltaX > 10 || deltaY > 10) {
                         if (deltaX > deltaY) {
-                            // Horizontal swipe detected - don't let parent intercept
                             isHorizontalSwipe = true;
                             v.getParent().requestDisallowInterceptTouchEvent(true);
                         } else {
-                            // Vertical scroll - let parent (NestedScrollView) handle
                             isHorizontalSwipe = false;
                             v.getParent().requestDisallowInterceptTouchEvent(false);
                         }
@@ -668,7 +766,6 @@ public class DashboardActivity extends AppCompatActivity {
                     v.animate().alpha(1f).setDuration(100).start();
                     v.getParent().requestDisallowInterceptTouchEvent(false);
 
-                    // Check for tap/click
                     float upDeltaX = Math.abs(event.getX() - touchStartX);
                     float upDeltaY = Math.abs(event.getY() - touchStartY);
                     if (upDeltaX < 10 && upDeltaY < 10) {
@@ -683,15 +780,52 @@ public class DashboardActivity extends AppCompatActivity {
                     break;
             }
 
-            // Pass event to gesture detector
             gestureDetector.onTouchEvent(event);
 
-            // Always return true to handle the touch
             return true;
         });
     }
+
+    private boolean isFutureDate(Calendar cal) {
+        Calendar today = Calendar.getInstance();
+        today.set(Calendar.HOUR_OF_DAY, 23);
+        today.set(Calendar.MINUTE, 59);
+        today.set(Calendar.SECOND, 59);
+        today.set(Calendar.MILLISECOND, 999);
+
+        Calendar target = (Calendar) cal.clone();
+        return target.getTimeInMillis() > today.getTimeInMillis();
+    }
+
+    private boolean isToday(Calendar cal) {
+        Calendar today = Calendar.getInstance();
+        return cal.get(Calendar.YEAR) == today.get(Calendar.YEAR)
+                && cal.get(Calendar.DAY_OF_YEAR) == today.get(Calendar.DAY_OF_YEAR);
+    }
+
+    private void updateNextButtonState() {
+        if (nextDateButton == null) return;
+        if (isToday(currentCalendar)) {
+            nextDateButton.setAlpha(0.3f);
+            nextDateButton.setEnabled(false);
+        } else {
+            nextDateButton.setAlpha(1f);
+            nextDateButton.setEnabled(true);
+        }
+    }
+
     private void animateBalanceCardSwipe(int direction) {
         if (isAnimating) return;
+
+        if (direction > 0) {
+            Calendar temp = (Calendar) currentCalendar.clone();
+            temp.add(Calendar.DAY_OF_MONTH, 1);
+            if (isFutureDate(temp)) {
+                Toast.makeText(this, "Cannot navigate to future dates", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
         isAnimating = true;
 
         float slideDistance = 60f;
@@ -732,6 +866,16 @@ public class DashboardActivity extends AppCompatActivity {
 
     private void animateDateChange(int direction) {
         if (isAnimating) return;
+
+        if (direction > 0) {
+            Calendar temp = (Calendar) currentCalendar.clone();
+            temp.add(Calendar.DAY_OF_MONTH, 1);
+            if (isFutureDate(temp)) {
+                Toast.makeText(this, "Cannot navigate to future dates", Toast.LENGTH_SHORT).show();
+                return;
+            }
+        }
+
         isAnimating = true;
 
         float slideDistance = 30f;
@@ -827,7 +971,6 @@ public class DashboardActivity extends AppCompatActivity {
         animSet.playTogether(fadeIn, slideIn);
         animSet.start();
 
-        // Update chart data
         updateChartFragments();
     }
 
@@ -855,23 +998,28 @@ public class DashboardActivity extends AppCompatActivity {
         if (user == null || user.getEmail() == null) return;
 
         mainHandler.post(() -> {
-            // Update Daily Chart Fragment
             if (chartDailyFragment != null && chartDailyFragment.isAdded()) {
                 chartDailyFragment.updateChart(monthTransactionList, totalIncome, totalExpense, currentCalendar);
             }
 
-            // Update Monthly Chart Fragment
             if (chartMonthlyFragment != null && chartMonthlyFragment.isAdded()) {
                 chartMonthlyFragment.updateChart(db, user.getEmail());
             }
 
-            // Update Overall Chart Fragment
             if (chartOverallFragment != null && chartOverallFragment.isAdded()) {
                 chartOverallFragment.updateChart(allTransactionsList);
             }
         });
     }
 
+    /**
+     * FIXED: Uses a request-token guard so that if this method is ever called
+     * again before a previous call finishes (e.g. two refreshes fired close
+     * together), only the LATEST call's results get committed to
+     * allTransactionsList. Older/stale results are silently discarded instead
+     * of being appended on top of newer data - this is what previously caused
+     * every transaction in the "Overall" chart data to appear twice.
+     */
     private void loadAllTransactions() {
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser == null || currentUser.getEmail() == null) return;
@@ -881,11 +1029,10 @@ public class DashboardActivity extends AppCompatActivity {
         String[] months = {"January", "February", "March", "April", "May", "June",
                 "July", "August", "September", "October", "November", "December"};
 
-        // Clear existing data
-        allTransactionsList.clear();
-
-        AtomicInteger completedMonths = new AtomicInteger(0);
-        int totalMonths = months.length;
+        final int requestId = allTransactionsRequestId.incrementAndGet();
+        final List<Transaction> tempTransactions = Collections.synchronizedList(new ArrayList<>());
+        final AtomicInteger completedMonths = new AtomicInteger(0);
+        final int totalMonths = months.length;
 
         for (String month : months) {
             db.collection("Users").document(email)
@@ -894,35 +1041,60 @@ public class DashboardActivity extends AppCompatActivity {
                     .collection(month)
                     .get()
                     .addOnSuccessListener(querySnapshot -> {
+                        // Ignore results from a superseded (stale) request.
+                        if (requestId != allTransactionsRequestId.get()) return;
+
                         for (QueryDocumentSnapshot doc : querySnapshot) {
                             try {
                                 Transaction txn = parseTransaction(doc);
                                 if (txn != null) {
-                                    synchronized (allTransactionsList) {
-                                        allTransactionsList.add(txn);
-                                    }
+                                    tempTransactions.add(txn);
                                 }
                             } catch (Exception e) {
                                 Log.e(TAG, "Error processing transaction", e);
                             }
                         }
 
-                        // Check if all months are loaded
-                        if (completedMonths.incrementAndGet() == totalMonths) {
-                            // Sort all transactions by date
-                            sortTransactionsByDate(allTransactionsList);
-
-                            // Update overall chart if visible
-                            if (chartsCard.getVisibility() == View.VISIBLE &&
-                                    chartOverallFragment != null && chartOverallFragment.isAdded()) {
-                                mainHandler.post(() -> chartOverallFragment.updateChart(allTransactionsList));
-                            }
-                        }
+                        finishAllTransactionsLoadIfDone(
+                                requestId, completedMonths, totalMonths, tempTransactions);
                     })
                     .addOnFailureListener(e -> {
                         Log.e(TAG, "Error loading month: " + month, e);
-                        completedMonths.incrementAndGet();
+                        if (requestId != allTransactionsRequestId.get()) return;
+
+                        finishAllTransactionsLoadIfDone(
+                                requestId, completedMonths, totalMonths, tempTransactions);
                     });
+        }
+    }
+
+    /**
+     * Commits the loaded "all transactions" data to the shared list only once
+     * every month has responded AND only if this request is still the most
+     * recent one (requestId still matches). This prevents a stale/older load
+     * from overwriting or duplicating data from a newer load.
+     */
+    private void finishAllTransactionsLoadIfDone(
+            int requestId,
+            AtomicInteger completedMonths,
+            int totalMonths,
+            List<Transaction> tempTransactions
+    ) {
+        if (completedMonths.incrementAndGet() != totalMonths) return;
+        if (requestId != allTransactionsRequestId.get()) return; // Superseded - discard.
+
+        List<Transaction> finalized;
+        synchronized (tempTransactions) {
+            finalized = new ArrayList<>(tempTransactions);
+        }
+        sortTransactionsByDate(finalized);
+
+        allTransactionsList.clear();
+        allTransactionsList.addAll(finalized);
+
+        if (chartsCard.getVisibility() == View.VISIBLE &&
+                chartOverallFragment != null && chartOverallFragment.isAdded()) {
+            mainHandler.post(() -> chartOverallFragment.updateChart(allTransactionsList));
         }
     }
 
@@ -972,6 +1144,11 @@ public class DashboardActivity extends AppCompatActivity {
         });
     }
 
+    /**
+     * FIXED: Now generates a request token (dashboardRequestId) for each call,
+     * and passes it through to loadTransactions(). Any stale/superseded call
+     * will be ignored instead of writing into the shared transaction lists.
+     */
     private void loadDashboardData(String month, String selectedDateOnly) {
         if (isLoading) {
             Log.d(TAG, "Already loading, skipping...");
@@ -979,7 +1156,9 @@ public class DashboardActivity extends AppCompatActivity {
         }
 
         isLoading = true;
-        Log.d(TAG, "Loading data for month=" + month + " date=" + selectedDateOnly);
+        final int requestId = dashboardRequestId.incrementAndGet();
+        Log.d(TAG, "Loading data for month=" + month + " date=" + selectedDateOnly
+                + " requestId=" + requestId);
 
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser == null) {
@@ -1003,6 +1182,9 @@ public class DashboardActivity extends AppCompatActivity {
                 .collection("Personal Details").document("Info")
                 .get()
                 .addOnSuccessListener(doc -> {
+                    // A newer load has already started - abandon this one.
+                    if (requestId != dashboardRequestId.get()) return;
+
                     if (doc.exists()) {
 
                         Object salaryObj = doc.get("Monthly Salary");
@@ -1024,17 +1206,17 @@ public class DashboardActivity extends AppCompatActivity {
                     }
 
 
-                    loadTransactions(email, month, selectedDateOnly);
+                    loadTransactions(email, month, selectedDateOnly, requestId);
                 })
                 .addOnFailureListener(e -> {
                     Log.e(TAG, "Error fetching salary", e);
+                    if (requestId != dashboardRequestId.get()) return;
                     monthlySalary = 0.0;
-                    loadTransactions(email, month, selectedDateOnly);
+                    loadTransactions(email, month, selectedDateOnly, requestId);
                 });
     }
 
     private void showLoadingState() {
-        // Optional: Add shimmer or loading indicator
         tvTotalBalance.setAlpha(0.5f);
         tvTotalIncome.setAlpha(0.5f);
         tvTotalExpense.setAlpha(0.5f);
@@ -1046,14 +1228,30 @@ public class DashboardActivity extends AppCompatActivity {
         ObjectAnimator.ofFloat(tvTotalExpense, "alpha", 0.5f, 1f).setDuration(200).start();
     }
 
-    private void loadTransactions(String email, String month, String selectedDateOnly) {
-        // Clear previous data
-        transactionList.clear();
-        monthTransactionList.clear();
-        totalIncome = 0;
-        totalExpense = 0;
-        totalMonthExpense = 0;
-        totalMonthIncome = 0;
+    /**
+     * FIXED: This is the core of the duplication bug fix.
+     *
+     * Previously, this method immediately cleared the shared lists/totals at
+     * the start, then populated them directly inside the async Firestore
+     * callback. If two calls overlapped (which was happening due to the
+     * refresh race described above), BOTH callbacks would append into the
+     * SAME shared lists/totals without re-clearing right before their own
+     * writes - resulting in every transaction appearing twice and every total
+     * being doubled.
+     *
+     * Now, all parsing/summing happens into LOCAL variables first. The shared
+     * instance fields (transactionList, monthTransactionList, totalIncome,
+     * totalExpense, totalMonthIncome, totalMonthExpense) are only overwritten
+     * once, right before the UI update - and only if this call's requestId is
+     * still the latest (i.e. no newer refresh/load has started in the
+     * meantime). Stale calls are discarded completely, guaranteeing accurate,
+     * non-duplicated, real-time data every time.
+     */
+    private void loadTransactions(String email, String month, String selectedDateOnly, int requestId) {
+        if (requestId != dashboardRequestId.get()) {
+            // A newer request has already taken over - don't touch anything.
+            return;
+        }
 
         db.collection("Users").document(email)
                 .collection("Financial Details")
@@ -1061,6 +1259,8 @@ public class DashboardActivity extends AppCompatActivity {
                 .collection(month)
                 .get()
                 .addOnSuccessListener(querySnapshot -> {
+                    if (requestId != dashboardRequestId.get()) return; // stale - ignore entirely
+
                     SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy", Locale.getDefault());
                     Date selectedDate;
                     try {
@@ -1072,44 +1272,74 @@ public class DashboardActivity extends AppCompatActivity {
                         return;
                     }
 
+                    // Use fresh local containers so concurrent/overlapping calls
+                    // can never interfere with each other's data.
+                    List<Transaction> newDayList = new ArrayList<>();
+                    List<Transaction> newMonthList = new ArrayList<>();
+                    double dayIncome = 0;
+                    double dayExpense = 0;
+                    double monthIncome = 0;
+                    double monthExpense = 0;
+
                     for (QueryDocumentSnapshot doc : querySnapshot) {
                         Transaction txn = parseTransaction(doc);
                         if (txn == null) continue;
 
                         // Add to month list
-                        monthTransactionList.add(txn);
+                        newMonthList.add(txn);
 
                         // Track monthly totals
                         if (txn.isIncome()) {
-                            totalMonthIncome += txn.getAmount();
+                            monthIncome += txn.getAmount();
                         } else {
-                            totalMonthExpense += txn.getAmount();
+                            monthExpense += txn.getAmount();
                         }
 
                         // Check if transaction is for selected date
                         try {
                             Date txnDate = sdf.parse(txn.getDate());
                             if (txnDate != null && sdf.format(txnDate).equals(selectedDateOnly)) {
-                                transactionList.add(txn);
+                                newDayList.add(txn);
                                 if (txn.isIncome()) {
-                                    totalIncome += txn.getAmount();
+                                    dayIncome += txn.getAmount();
                                 } else {
-                                    totalExpense += txn.getAmount();
+                                    dayExpense += txn.getAmount();
                                 }
                             }
                         } catch (ParseException ignored) {
                         }
                     }
 
+                    if (requestId != dashboardRequestId.get()) return; // became stale mid-processing
+
                     // Sort transactions by time (newest first)
-                    sortTransactionsByTime(transactionList);
-                    sortTransactionsByDate(monthTransactionList);
+                    sortTransactionsByTime(newDayList);
+                    sortTransactionsByDate(newMonthList);
 
                     // Compute balance
-                    double balance = computeBalanceUpToDate(monthTransactionList, selectedDate);
+                    double balance = computeBalanceUpToDate(newMonthList, selectedDate);
+
+                    final double finalDayIncome = dayIncome;
+                    final double finalDayExpense = dayExpense;
+                    final double finalMonthIncome = monthIncome;
+                    final double finalMonthExpense = monthExpense;
 
                     // Update UI on main thread
                     mainHandler.post(() -> {
+                        if (requestId != dashboardRequestId.get()) return; // stale by the time we commit
+
+                        // Commit to shared state only now, all at once.
+                        transactionList.clear();
+                        transactionList.addAll(newDayList);
+
+                        monthTransactionList.clear();
+                        monthTransactionList.addAll(newMonthList);
+
+                        totalIncome = finalDayIncome;
+                        totalExpense = finalDayExpense;
+                        totalMonthIncome = finalMonthIncome;
+                        totalMonthExpense = finalMonthExpense;
+
                         updateDashboardUI(balance);
                         transactionAdapter.notifyDataSetChanged();
                         updateEmptyState();
@@ -1125,6 +1355,7 @@ public class DashboardActivity extends AppCompatActivity {
 
                 })
                 .addOnFailureListener(e -> {
+                    if (requestId != dashboardRequestId.get()) return;
                     mainHandler.post(() -> {
                         Toast.makeText(this, "Failed to fetch transactions", Toast.LENGTH_SHORT).show();
                         Log.e(TAG, "Transaction fetch error", e);
@@ -1280,6 +1511,8 @@ public class DashboardActivity extends AppCompatActivity {
         String selectedDateOnly = queryFormat.format(currentCalendar.getTime());
         currentDate.setText(displayDate);
 
+        updateNextButtonState();
+
         int currentMonth = currentCalendar.get(Calendar.MONTH);
         if (spinnerMonth.getSelectedItemPosition() != currentMonth) {
             spinnerMonth.setSelection(currentMonth, false);
@@ -1291,6 +1524,12 @@ public class DashboardActivity extends AppCompatActivity {
     }
 
     private void changeDate(int offset) {
+        Calendar temp = (Calendar) currentCalendar.clone();
+        temp.add(Calendar.DAY_OF_MONTH, offset);
+        if (isFutureDate(temp)) {
+            Toast.makeText(this, "Cannot navigate to future dates", Toast.LENGTH_SHORT).show();
+            return;
+        }
         currentCalendar.add(Calendar.DAY_OF_MONTH, offset);
         updateCurrentDate();
     }
@@ -1305,6 +1544,12 @@ public class DashboardActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         updateGreeting();
+
+        if (isFirstResume) {
+            isFirstResume = false;
+        } else {
+            refreshAllData();
+        }
     }
 
     @Override

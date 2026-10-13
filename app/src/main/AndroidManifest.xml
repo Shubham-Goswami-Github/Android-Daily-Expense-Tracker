@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -16,66 +17,117 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.FinanceTracker"
         tools:targetApi="31">
+
+        <!-- Main Finance Tracker launcher icon -->
         <activity
             android:name=".SplashActivity"
-            android:exported="true" >
+            android:exported="true">
+
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+
         </activity>
+
+        <!-- Personal details -->
         <activity
             android:name=".EditPersonalDetailsActivity"
             android:exported="false" />
+
+        <activity
+            android:name=".PersonalDetailsActivity"
+            android:exported="false" />
+
+        <!-- Feedback and account -->
         <activity
             android:name=".FeedbackActivity"
             android:exported="false" />
+
         <activity
             android:name=".DeleteAccountActivity"
             android:exported="false" />
+
         <activity
             android:name=".ChangePasswordActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
-        <activity android:name=".PersonalDetailsActivity" />
+
+        <!-- Dashboard and authentication -->
         <activity
             android:name=".DashboardActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize" />
+
         <activity
             android:name=".WelcomeActivity"
             android:exported="true"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="adjustResize" />
 
-        </activity>
         <activity
             android:name=".LoginActivity"
             android:exported="false" />
+
         <activity
             android:name=".RegisterActivity"
             android:exported="false"
             android:windowSoftInputMode="adjustResize" />
+
+        <!-- Home -->
         <activity
             android:name=".HomeActivity"
             android:exported="false" />
+
+        <!-- Transactions -->
         <activity
             android:name=".AddTransactionActivity"
             android:exported="true" />
+
+        <!-- Settings -->
         <activity
             android:name=".SettingsActivity"
             android:exported="false" />
+
+        <!-- Notes -->
         <activity
             android:name=".NotesActivity"
             android:exported="false" />
+
         <activity
             android:name=".AddNoteActivity"
             android:exported="false" />
+
         <activity
             android:name=".ViewNotesActivity"
             android:exported="false" />
 
-        <receiver android:name=".NoteReminderReceiver" android:exported="false" />
+        <!-- AiBot: separate launcher icon -->
+
+        <!-- AiBot: independent launcher task -->
+
+        <activity
+            android:name=".AiAssistantActivity"
+            android:exported="true"
+            android:label="AiBot"
+            android:icon="@mipmap/ic_aibot_logo"
+            android:roundIcon="@mipmap/ic_aibot_logo"
+            android:theme="@style/Theme.FinanceTracker.AiPopup"
+            android:launchMode="singleTask"
+            android:taskAffinity="com.cscorner.financetracker.aibot"
+            android:windowSoftInputMode="adjustResize">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+        ```
+        <!-- Note reminders -->
+        <receiver
+            android:name=".NoteReminderReceiver"
+            android:exported="false" />
+
     </application>
 
 </manifest>
