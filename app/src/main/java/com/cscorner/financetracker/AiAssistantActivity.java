@@ -1,10 +1,14 @@
 package com.cscorner.financetracker;
 
 import android.animation.ObjectAnimator;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -13,6 +17,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
 import android.view.animation.DecelerateInterpolator;
+import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.ImageButton;
@@ -23,6 +28,12 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
+
+import com.cscorner.financetracker.model.Note;
 
 import com.google.android.gms.tasks.Task;
 import com.google.android.gms.tasks.Tasks;
@@ -70,6 +81,8 @@ public class AiAssistantActivity extends AppCompatActivity {
     private TextView btnClearChat;
     private TextView btnBack;
 
+    private View rootLayoutForKeyboard;
+    private int lastVisibleFrameHeight = -1;
     private FirebaseFirestore db;
     private FirebaseAuth auth;
 
@@ -119,13 +132,64 @@ public class AiAssistantActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_ai_assistant);
 
-        // Present the assistant as an in-app floating chat window, not a full-screen page.
-        android.util.DisplayMetrics displayMetrics = getResources().getDisplayMetrics();
-        int popupWidth = (int) (displayMetrics.widthPixels * 0.94f);
-        int popupHeight = (int) (displayMetrics.heightPixels * 0.80f);
-        getWindow().setLayout(popupWidth, popupHeight);
-        getWindow().setDimAmount(0.45f);
+        // Translucent popup window ke liye: humein khud IME (keyboard) insets
+// handle karne hain, isliye system ko decor auto-fit nahi karne dete.
+// Ye line WindowSoftInputMode=adjustResize ke sath milke keyboard aane/
+// jaane par reliable resize deti hai, especially translucent activities
+// ke liye jahan automatic adjustResize akela kaam nahi karta.
+        getWindow().setSoftInputMode(
+                android.view.WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
 
+        View rootLayout = findViewById(R.id.rootLayout);
+        View chatCardContainer = findViewById(R.id.chatCardContainer);
+
+        if (rootLayout != null) {
+            rootLayout.setOnClickListener(v -> finish());
+        }
+
+        if (chatCardContainer != null) {
+            chatCardContainer.setOnClickListener(v -> {
+                // Consume click so tapping inside the chat card doesn't close it
+            });
+
+            if (rootLayout != null) {
+                ViewCompat.setOnApplyWindowInsetsListener(rootLayout, (v, windowInsets) -> {
+                    Insets imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
+                    int keyboardHeight = imeInsets.bottom;
+                    boolean isImeVisible = windowInsets.isVisible(WindowInsetsCompat.Type.ime());
+
+                    ConstraintLayout.LayoutParams params =
+                            (ConstraintLayout.LayoutParams) chatCardContainer.getLayoutParams();
+                    float density = getResources().getDisplayMetrics().density;
+                    int marginDp = (int) (16 * density);
+
+                    if (isImeVisible && keyboardHeight > 0) {
+                        int topMarginPx = (int) (24 * density);
+                        int minHeightPx = (int) (320 * density);
+
+                        int availableHeight = v.getHeight() - keyboardHeight - marginDp - topMarginPx;
+                        if (availableHeight < minHeightPx) {
+                            availableHeight = minHeightPx;
+                        }
+
+                        // Fixed height taaki keyboard ke upar poora card (including input box) fit ho jaaye
+                        params.height = availableHeight;
+                        params.topMargin = topMarginPx;
+                        params.bottomMargin = keyboardHeight + marginDp;
+                    } else {
+                        // Wapas original percent-based (0.80) height restore karo
+                        params.height = ConstraintLayout.LayoutParams.MATCH_CONSTRAINT;
+                        params.topMargin = 0;
+                        params.bottomMargin = 0;
+                    }
+
+                    chatCardContainer.setLayoutParams(params);
+                    scrollToBottom();
+
+                    return windowInsets;
+                });
+            }
+        }
         chatMessages = findViewById(R.id.chatMessages);
         chatScrollView = findViewById(R.id.chatScrollView);
         etMessage = findViewById(R.id.etMessage);
@@ -161,6 +225,7 @@ public class AiAssistantActivity extends AppCompatActivity {
             bounceView(v);
             confirmClearChat();
         });
+        setupKeyboardAutoScroll();
 
         loadChatHistory();
     }
@@ -174,15 +239,6 @@ public class AiAssistantActivity extends AppCompatActivity {
 
     // -------------------- CHAT STORAGE --------------------
 
-    /*
-     * Reliable, queryable chat schema:
-     * Users/{email}/AI Chat History/Messages/{messageId}
-     *
-     * Each message stores role, content, timestamp, month and date.
-     * A fixed "Messages" collection lets Android query and clear messages.
-     * Firestore Android SDK cannot enumerate arbitrary subcollections, so
-     * date-named subcollections cannot be discovered automatically.
-     */
     private CollectionReference chatCollection() {
         if (auth.getCurrentUser() == null
                 || auth.getCurrentUser().getEmail() == null) {
@@ -403,14 +459,15 @@ public class AiAssistantActivity extends AppCompatActivity {
         addMessageBubble(
                 "Hello! 👋 I'm your AI Finance Assistant.\n\n"
                         + "I can answer questions about your saved financial records "
-                        + "and help you add, edit, or delete transactions.\n\n"
+                        + "and help you add, edit, or delete transactions and notes.\n\n"
                         + "Try asking:\n"
                         + "• What is my overall income?\n"
                         + "• Give me my monthly summary\n"
                         + "• How much did I spend today?\n"
-                        + "• Compare this month with last month\n"
-                        + "• Give me saving tips\n"
-                        + "• Add an expense of ₹100 today for groceries",
+                        + "• Aaj maine Ritesh se 200 rupay liye\n"
+                        + "• Maine Suresh ko 500 diye\n"
+                        + "• Mujhe kal doctor jaana hai, yaad dila dena\n"
+                        + "• Give me saving tips",
                 false
         );
 
@@ -495,7 +552,12 @@ public class AiAssistantActivity extends AppCompatActivity {
         loadAllTransactions(new RecordsCallback() {
             @Override
             public void onSuccess(List<TransactionRecord> records) {
-                callAI(message, buildFinanceSummary(records), loadingView);
+                loadAllNotes(notes -> {
+                    String combinedSummary = buildFinanceSummary(records)
+                            + "\n\n" + buildNotesSummary(notes)
+                            + "\n\n" + buildNotesFinanceSummary(notes);
+                    callAI(message, combinedSummary, loadingView, message);
+                });
             }
 
             @Override
@@ -510,6 +572,162 @@ public class AiAssistantActivity extends AppCompatActivity {
         });
     }
 
+    private interface NotesCallback {
+        void onSuccess(List<Note> notes);
+    }
+
+    private void loadAllNotes(NotesCallback callback) {
+        if (auth.getCurrentUser() == null || auth.getCurrentUser().getEmail() == null) {
+            callback.onSuccess(new ArrayList<>());
+            return;
+        }
+
+        String email = auth.getCurrentUser().getEmail();
+        db.collection("Users").document(email).collection("Personal Notes")
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Note> notes = queryDocumentSnapshots.toObjects(Note.class);
+                    callback.onSuccess(notes);
+                })
+                .addOnFailureListener(e -> callback.onSuccess(new ArrayList<>()));
+    }
+
+    private String buildNotesSummary(List<Note> notes) {
+        if (notes == null || notes.isEmpty()) {
+            return "USER'S PERSONAL NOTES\nNo saved notes found.";
+        }
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("USER'S PERSONAL NOTES (Total: ").append(notes.size()).append("):\n");
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault());
+
+        for (int i = 0; i < notes.size(); i++) {
+            Note n = notes.get(i);
+            sb.append(i + 1).append(". ID: ").append(n.getId())
+                    .append(" | Type: ").append(n.getType())
+                    .append(" | Summary: ").append(n.getSummary());
+
+            if (n.isReminderEnabled() && n.getReminderDate() > 0) {
+                sb.append(" | Reminder: ").append(sdf.format(new Date(n.getReminderDate())));
+            } else {
+                sb.append(" | Reminder: None");
+            }
+            sb.append(" | Created: ").append(sdf.format(new Date(n.getCreatedAt()))).append("\n");
+        }
+
+        return sb.toString();
+    }
+    /**
+     * Extracts the first positive numeric amount found inside a note's free
+     * text (e.g. "Ritesh se ₹200 liye" -> 200.0). Used to compute lending /
+     * borrowing totals without needing a separate "amount" field in Firestore.
+     */
+    private double extractAmountFromText(String text) {
+        if (text == null || text.trim().isEmpty()) return 0;
+
+        java.util.regex.Matcher matcher =
+                java.util.regex.Pattern.compile("(\\d+(?:[.,]\\d{1,2})?)")
+                        .matcher(text);
+
+        while (matcher.find()) {
+            try {
+                String raw = matcher.group(1).replace(",", "");
+                double value = Double.parseDouble(raw);
+                if (value > 0) return value;
+            } catch (NumberFormatException ignored) {
+                // Keep scanning for the next number in the text.
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * Builds a transaction-style financial summary for lending/borrowing
+     * notes: total given, total taken, net position, and overdue/upcoming
+     * reminders. Amounts are heuristically extracted from each note's text
+     * since notes don't store a dedicated numeric amount field.
+     */
+    private String buildNotesFinanceSummary(List<Note> notes) {
+        double totalLent = 0;
+        double totalBorrowed = 0;
+        int lendingCount = 0;
+        int borrowedCount = 0;
+        int generalCount = 0;
+        int overdueCount = 0;
+        int upcomingCount = 0;
+        long now = System.currentTimeMillis();
+
+        StringBuilder overdueList = new StringBuilder();
+        StringBuilder upcomingList = new StringBuilder();
+        SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault());
+
+        if (notes != null) {
+            for (Note n : notes) {
+                String type = n.getType() == null ? "" : n.getType();
+                double amount = extractAmountFromText(n.getSummary());
+
+                if ("Money lending".equalsIgnoreCase(type)) {
+                    lendingCount++;
+                    totalLent += amount;
+                } else if ("Money borrowed".equalsIgnoreCase(type)) {
+                    borrowedCount++;
+                    totalBorrowed += amount;
+                } else {
+                    generalCount++;
+                }
+
+                if (n.isReminderEnabled() && n.getReminderDate() > 0) {
+                    if (n.getReminderDate() < now) {
+                        overdueCount++;
+                        overdueList.append("- ").append(n.getSummary())
+                                .append(" (was due ")
+                                .append(sdf.format(new Date(n.getReminderDate())))
+                                .append(")\n");
+                    } else {
+                        upcomingCount++;
+                        upcomingList.append("- ").append(n.getSummary())
+                                .append(" (due ")
+                                .append(sdf.format(new Date(n.getReminderDate())))
+                                .append(")\n");
+                    }
+                }
+            }
+        }
+
+        double net = totalLent - totalBorrowed;
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("NOTES FINANCIAL SUMMARY (money lending/borrowing totals, from note text):\n");
+        sb.append("Total money lent (given to others): ").append(money(totalLent))
+                .append(" across ").append(lendingCount).append(" note(s)\n");
+        sb.append("Total money borrowed (taken from others): ").append(money(totalBorrowed))
+                .append(" across ").append(borrowedCount).append(" note(s)\n");
+        sb.append("Net position: ").append(money(net))
+                .append(net >= 0 ? " (others owe you more overall)" : " (you owe others more overall)")
+                .append("\n");
+        sb.append("General (non-money) reminders: ").append(generalCount).append("\n\n");
+
+        if (overdueCount > 0) {
+            sb.append("OVERDUE REMINDERS (").append(overdueCount).append("):\n").append(overdueList);
+        } else {
+            sb.append("OVERDUE REMINDERS: None\n");
+        }
+
+        sb.append("\n");
+
+        if (upcomingCount > 0) {
+            sb.append("UPCOMING REMINDERS (").append(upcomingCount).append("):\n").append(upcomingList);
+        } else {
+            sb.append("UPCOMING REMINDERS: None\n");
+        }
+
+        sb.append("\nNote: These totals are estimated by extracting the first number ")
+                .append("found in each note's text. They may be inaccurate if a note ")
+                .append("doesn't clearly state a numeric amount.");
+
+        return sb.toString();
+    }
     private interface RecordsCallback {
         void onSuccess(List<TransactionRecord> records);
         void onError(String error);
@@ -699,7 +917,7 @@ public class AiAssistantActivity extends AppCompatActivity {
 
     // -------------------- AI REQUEST --------------------
 
-    private void callAI(String message, String financeSummary, View loadingView) {
+    private void callAI(String message, String financeSummary, View loadingView, String originalUserMessage) {
         try {
             JSONObject requestJson = new JSONObject();
             requestJson.put("message", message);
@@ -766,9 +984,9 @@ public class AiAssistantActivity extends AppCompatActivity {
                             if (action != null
                                     && "ready".equalsIgnoreCase(actionStatus)
                                     && !"none".equalsIgnoreCase(actionType)) {
-                                executeTransactionAction(action, reply);
+                                executeTransactionAction(action, reply, originalUserMessage);
                             } else {
-                                showBotMessage(reply);
+                                executeTransactionAction(null, reply, originalUserMessage);
                             }
                         } catch (Exception e) {
                             Log.e(TAG, "Could not parse AI response", e);
@@ -898,10 +1116,6 @@ public class AiAssistantActivity extends AppCompatActivity {
         return textView;
     }
 
-    /**
-     * Animated "typing..." bubble shown while the AI/finance records are loading.
-     * Replaces the old plain-text "Checking your financial records..." message.
-     */
     private View addTypingIndicatorBubble() {
         LinearLayout bubble = new LinearLayout(this);
         bubble.setOrientation(LinearLayout.HORIZONTAL);
@@ -979,11 +1193,35 @@ public class AiAssistantActivity extends AppCompatActivity {
             }
         }
     }
-
+    /**
+     * WhatsApp-style floating chat behavior: whenever the keyboard opens,
+     * closes, or the layout resizes for any reason, keep the latest message
+     * visible by auto-scrolling to the bottom instead of making the user
+     * scroll manually.
+     */
+    private void setupKeyboardAutoScroll() {
+        // Keyboard show/hide par resize + scroll ab WindowInsets listener
+        // (onCreate mein set kiya gaya) handle karta hai. Yahan sirf ek extra
+        // safety-net rakha hai: jab EditText focus le, thoda delay ke baad
+        // phir se scroll karo, taaki keyboard animation settle hone ke baad
+        // bhi latest message hamesha visible rahe.
+        etMessage.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                chatScrollView.postDelayed(this::scrollToBottom, 150);
+                chatScrollView.postDelayed(this::scrollToBottom, 300);
+            }
+        });
+    }
     private void scrollToBottom() {
-        if (chatScrollView != null) {
-            chatScrollView.post(() -> chatScrollView.fullScroll(View.FOCUS_DOWN));
-        }
+        if (chatScrollView == null) return;
+        chatScrollView.post(() -> {
+            chatScrollView.fullScroll(View.FOCUS_DOWN);
+            // Double-post: keyboard resize animation sometimes finishes a frame
+            // later, so scroll again right after to guarantee the latest
+            // message stays visible above the keyboard.
+            chatScrollView.postDelayed(
+                    () -> chatScrollView.fullScroll(View.FOCUS_DOWN), 80);
+        });
     }
 
     private GradientDrawable createBackground(int backgroundColor, int strokeColor) {
@@ -1006,7 +1244,6 @@ public class AiAssistantActivity extends AppCompatActivity {
         return value == null ? "" : value.trim();
     }
 
-    /** Simple press-feedback bounce animation for buttons. */
     private void bounceView(View view) {
         view.animate()
                 .scaleX(0.88f)
@@ -1020,9 +1257,6 @@ public class AiAssistantActivity extends AppCompatActivity {
                 .start();
     }
 
-    // Close AiBot after a confirmed successful transaction action.
-    // If opened from the launcher, Android returns to the home screen; if opened
-    // from another app screen, it returns to that previous screen.
     private void completeActionAndExit(String successMessage) {
         showBotMessage(successMessage);
         Toast.makeText(this, "Transaction successful!", Toast.LENGTH_SHORT).show();
@@ -1034,18 +1268,18 @@ public class AiAssistantActivity extends AppCompatActivity {
         }, 900);
     }
 
-    // -------------------- TRANSACTION ACTIONS --------------------
+    // -------------------- TRANSACTION & NOTE ACTIONS --------------------
 
-    private void executeTransactionAction(JSONObject action, String reply) {
-        String type = action.optString("type", "none");
+    private void executeTransactionAction(JSONObject action, String reply, String userMessage) {
+        String type = action != null ? action.optString("type", "none") : "none";
 
         if (auth.getCurrentUser() == null
                 || auth.getCurrentUser().getEmail() == null) {
-            showBotMessage("Please log in again before changing transactions.");
+            showBotMessage("Please log in again before managing your data.");
             return;
         }
 
-        switch (type) {
+        switch (type.toLowerCase(Locale.ROOT)) {
             case "add_transaction":
                 addTransactionFromAI(action);
                 break;
@@ -1055,10 +1289,530 @@ public class AiAssistantActivity extends AppCompatActivity {
             case "delete_transaction":
                 findAndModifyTransaction(action, true);
                 break;
+            case "add_note":
+            case "create_note":
+            case "save_note":
+                addNoteFromAI(action, userMessage);
+                break;
+            case "read_notes":
+            case "get_notes":
+            case "list_notes":
+            case "show_notes":
+            case "view_notes":
+                readNotesFromAI();
+                break;
+            case "edit_note":
+            case "update_note":
+            case "modify_note":
+                updateNoteFromAI(action, userMessage);
+                break;
+            case "delete_note":
+            case "remove_note":
+                deleteNoteFromAI(action, userMessage);
+                break;
             default:
-                showBotMessage(reply);
+                if (!checkAndExecuteLocalNoteIntent(userMessage)) {
+                    showBotMessage(reply);
+                }
                 break;
         }
+    }
+
+    /**
+     * Local safety-net: if the AI backend fails to tag an action (returns
+     * "none" or something unrecognized), try to detect common note/reminder
+     * intents directly from the raw user text so money-borrow/lend/reminder
+     * requests are never silently ignored.
+     */
+    private boolean checkAndExecuteLocalNoteIntent(String userMessage) {
+        if (userMessage == null) return false;
+        String lower = userMessage.trim().toLowerCase(Locale.ROOT);
+
+        if (lower.matches(".*(show|read|list|view|get|dikhao|padho).*note.*")
+                || lower.matches(".*note.*(show|read|list|view|get|dikhao|padho).*")) {
+            readNotesFromAI();
+            return true;
+        }
+
+        if (lower.startsWith("add note") || lower.startsWith("create note") || lower.startsWith("save note")
+                || lower.startsWith("note add") || lower.startsWith("note create") || lower.startsWith("note save")
+                || lower.startsWith("note banao") || lower.startsWith("note likho")) {
+            addNoteFromAI(null, userMessage);
+            return true;
+        }
+
+        if (lower.startsWith("delete note") || lower.startsWith("remove note")
+                || lower.startsWith("note delete") || lower.startsWith("note remove")
+                || lower.startsWith("note hatao")) {
+            deleteNoteFromAI(null, userMessage);
+            return true;
+        }
+
+        if (lower.startsWith("update note") || lower.startsWith("edit note")
+                || lower.startsWith("note update") || lower.startsWith("note edit")
+                || lower.startsWith("note badlo")) {
+            updateNoteFromAI(null, userMessage);
+            return true;
+        }
+
+        // Safety-net: debt settlement/repayment phrases should delete the note,
+        // not create a new one.
+        boolean settlementSignal = lower.contains("wapas kar diya")
+                || lower.contains("wapas kiya") || lower.contains("laut diya")
+                || lower.contains("clear ho gaya") || lower.contains("clear kar diya")
+                || lower.contains("mil gaya") || lower.contains("chuka diya")
+                || lower.contains("paid back") || lower.contains("returned");
+
+        if (settlementSignal) {
+            deleteNoteFromAI(null, userMessage);
+            return true;
+        }
+
+        // Guard: pure questions about totals/history ("kitna diya hai ab tak",
+        // "total kitna liya hai") must NEVER be treated as a new note. Genuine
+        // new lending/borrowing events always state a specific digit amount;
+        // questions about cumulative totals almost never do.
+        boolean looksLikeQuestion = lower.matches(
+                ".*\\b(kitna|kitne|kaun|kab|kya|how much|total|overall|ab\\s*tak|so\\s*far)\\b.*"
+        ) || lower.trim().endsWith("?");
+        boolean hasDigit = lower.matches(".*\\d.*");
+
+        // Safety-net: natural-language money borrow/lend statements
+        // ("Ritesh se 200 liye", "Suresh ko 500 diye") even without an
+        // explicit action tagged by the AI backend. Skipped entirely if the
+        // message looks like a question with no specific amount.
+        if (!(looksLikeQuestion && !hasDigit)) {
+            boolean borrowedSignal = lower.contains("liya") || lower.contains("liye")
+                    || lower.contains("borrow") || lower.contains("udhaar")
+                    || lower.contains("udhar");
+            boolean lentSignal = lower.contains("diya") || lower.contains("diye")
+                    || lower.contains("lend") || lower.contains("lent") || lower.contains("gave");
+
+            if (borrowedSignal || lentSignal) {
+                addNoteFromAI(null, userMessage);
+                return true;
+            }
+        }
+
+        return false;
+    }
+    // -------------------- NOTE CRUD FUNCTIONS FOR AI --------------------
+
+    /**
+     * Figures out the correct note category ("Money lending", "Money
+     * borrowed", or "General Reminder") using, in priority order:
+     * 1) the noteType value the AI backend explicitly provided,
+     * 2) Hindi/Hinglish keyword detection from the note text / user message.
+     */
+    private String normalizeNoteType(String rawType, String summary, String userMessage) {
+        if (rawType != null && !rawType.trim().isEmpty()) {
+            String lowerType = rawType.toLowerCase(Locale.ROOT);
+            if (lowerType.contains("lend")) return "Money lending";
+            if (lowerType.contains("borrow")) return "Money borrowed";
+            if (lowerType.contains("general") || lowerType.contains("remind")) return "General Reminder";
+        }
+
+        String lower = ((summary != null ? summary : "") + " "
+                + (userMessage != null ? userMessage : "")).toLowerCase(Locale.ROOT);
+
+        // Direction-aware fallback: "mujhe ... diya/diye" means someone gave
+        // money TO the user (borrowed), while "ko ... diya/diye" or plain
+        // "diya/diye" by the user means the user gave money OUT (lending).
+        boolean otherGaveToMe = lower.contains("mujhe") &&
+                (lower.contains("diya") || lower.contains("diye"));
+        boolean otherTookFromMe = lower.contains("mujhse") &&
+                (lower.contains("liya") || lower.contains("liye"));
+
+        if (otherGaveToMe) return "Money borrowed";
+        if (otherTookFromMe) return "Money lending";
+
+        boolean borrowedSignal = lower.contains("liya") || lower.contains("liye")
+                || lower.contains("borrow") || lower.contains("karz") || lower.contains("karza")
+                || lower.contains("loan liya");
+        boolean lentSignal = lower.contains("diya") || lower.contains("diye")
+                || lower.contains("lend") || lower.contains("lent") || lower.contains("gave");
+
+        if (borrowedSignal && !lentSignal) return "Money borrowed";
+        if (lentSignal && !borrowedSignal) return "Money lending";
+
+        if (lower.contains("udhaar") || lower.contains("udhar")) {
+            if (borrowedSignal) return "Money borrowed";
+            if (lentSignal) return "Money lending";
+        }
+
+        return "General Reminder";
+    }
+    private void addNoteFromAI(JSONObject action, String userMessage) {
+        if (auth.getCurrentUser() == null || auth.getCurrentUser().getEmail() == null) {
+            showBotMessage("Please log in again before adding notes.");
+            return;
+        }
+
+        String summary = action != null ? action.optString("summary", action.optString("noteSummary", "")).trim() : "";
+        // FIX: previously read action.optString("type", ...) first, which
+        // collided with the action's own "type" field (e.g. "add_note") and
+        // caused every note to fall through to "General Reminder".
+        String rawType = action != null ? action.optString("noteType", "").trim() : "";
+
+        if (summary.isEmpty() && userMessage != null) {
+            summary = extractNoteSummaryFromText(userMessage);
+        }
+
+        if (summary.isEmpty()) {
+            showBotMessage("Please specify what you want to write in the note.");
+            return;
+        }
+
+        String type = normalizeNoteType(rawType, summary, userMessage);
+
+        long reminderTimeMs = 0;
+        boolean isReminderEnabled = false;
+
+        if (action != null && (action.has("reminderDate") || action.has("date") || action.optBoolean("isReminderEnabled", false))) {
+            String dateStr = action.optString("reminderDate", action.optString("date", "")).trim();
+            String timeStr = action.optString("reminderTime", action.optString("time", "")).trim();
+            reminderTimeMs = parseDateTimeToMs(dateStr, timeStr);
+            if (reminderTimeMs > System.currentTimeMillis()) {
+                isReminderEnabled = true;
+            }
+        }
+
+        String email = auth.getCurrentUser().getEmail();
+        String noteId = db.collection("Users").document(email)
+                .collection("Personal Notes").document().getId();
+
+        Note note = new Note(
+                noteId,
+                email,
+                type,
+                summary,
+                reminderTimeMs,
+                isReminderEnabled,
+                System.currentTimeMillis()
+        );
+
+        db.collection("Users").document(email)
+                .collection("Personal Notes").document(noteId)
+                .set(note)
+                .addOnSuccessListener(aVoid -> {
+                    if (note.isReminderEnabled()) {
+                        scheduleNoteNotification(note);
+                    }
+                    SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault());
+                    String reminderText = note.isReminderEnabled() ?
+                            "\n⏰ Reminder set for: " + sdf.format(new Date(note.getReminderDate())) : "";
+
+                    String followUp = "";
+                    if (!note.isReminderEnabled()) {
+                        if ("Money borrowed".equals(type)) {
+                            followUp = "\n\n💬 Kab tak lautane hain paise? Bata dein to main reminder laga dunga.";
+                        } else if ("Money lending".equals(type)) {
+                            followUp = "\n\n💬 Kab tak wapas lene hain paise? Bata dein to main reminder laga dunga.";
+                        } else {
+                            followUp = "\n\n💬 Kab yaad dilau? Date/time bata dein to reminder laga dunga.";
+                        }
+                    }
+
+                    showBotMessage("✅ Note added successfully!\n\n"
+                            + "Type: " + note.getType() + "\n"
+                            + "Note: " + note.getSummary()
+                            + reminderText
+                            + followUp);
+                })
+                .addOnFailureListener(e -> showBotMessage("❌ Could not save note: " + safeString(e.getLocalizedMessage())));
+    }
+
+    private void readNotesFromAI() {
+        if (auth.getCurrentUser() == null || auth.getCurrentUser().getEmail() == null) {
+            showBotMessage("Please log in to view your notes.");
+            return;
+        }
+
+        String email = auth.getCurrentUser().getEmail();
+        db.collection("Users").document(email)
+                .collection("Personal Notes")
+                .orderBy("createdAt", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(queryDocumentSnapshots -> {
+                    List<Note> notes = queryDocumentSnapshots.toObjects(Note.class);
+                    if (notes.isEmpty()) {
+                        showBotMessage("📝 You don't have any notes saved yet.");
+                        return;
+                    }
+
+                    StringBuilder sb = new StringBuilder("📝 Here are your saved notes:\n\n");
+                    SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault());
+
+                    for (int i = 0; i < notes.size(); i++) {
+                        Note n = notes.get(i);
+                        String icon = "💰";
+                        if ("Money borrowed".equalsIgnoreCase(n.getType())) icon = "💸";
+                        else if ("General Reminder".equalsIgnoreCase(n.getType())) icon = "🔔";
+
+                        sb.append(i + 1).append(". ").append(icon).append(" ").append(n.getType()).append("\n")
+                                .append("   ").append(n.getSummary()).append("\n")
+                                .append("   📅 ").append(sdf.format(new Date(n.getCreatedAt())));
+
+                        if (n.isReminderEnabled() && n.getReminderDate() > 0) {
+                            sb.append("\n   ⏰ Remind on: ").append(sdf.format(new Date(n.getReminderDate())));
+                        }
+                        sb.append("\n\n");
+                    }
+
+                    showBotMessage(sb.toString().trim());
+                })
+                .addOnFailureListener(e -> showBotMessage("❌ Could not fetch notes: " + safeString(e.getLocalizedMessage())));
+    }
+
+    private void updateNoteFromAI(JSONObject action, String userMessage) {
+        if (auth.getCurrentUser() == null || auth.getCurrentUser().getEmail() == null) {
+            showBotMessage("Please log in to update notes.");
+            return;
+        }
+
+        String email = auth.getCurrentUser().getEmail();
+        String targetNoteId = action != null ? action.optString("targetNoteId", action.optString("id", "")).trim() : "";
+        String targetSummary = action != null ? action.optString("targetSummary", action.optString("targetText", "")).trim() : "";
+
+        if (targetSummary.isEmpty() && targetNoteId.isEmpty() && userMessage != null) {
+            targetSummary = extractTargetSearchTerm(userMessage);
+        }
+
+        String newSummary = action != null ? action.optString("newSummary", action.optString("summary", "")).trim() : "";
+        // FIX: previously fell back to action.optString("type", ...) which is
+        // the action's own type (e.g. "edit_note"), wrongly overwriting the
+        // note's category. Now only reads the dedicated "newType" field.
+        String rawNewType = action != null ? action.optString("newType", "").trim() : "";
+
+        final String searchKey = targetSummary;
+
+        db.collection("Users").document(email).collection("Personal Notes")
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<DocumentSnapshot> matches = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        Note n = doc.toObject(Note.class);
+                        if (n == null) continue;
+
+                        if (!targetNoteId.isEmpty() && doc.getId().equalsIgnoreCase(targetNoteId)) {
+                            matches.add(doc);
+                            break;
+                        }
+
+                        if (!searchKey.isEmpty()) {
+                            if (n.getSummary().toLowerCase(Locale.ROOT).contains(searchKey.toLowerCase(Locale.ROOT))) {
+                                matches.add(doc);
+                            }
+                        }
+                    }
+
+                    if (matches.isEmpty()) {
+                        showBotMessage("I couldn't find a matching note to update.");
+                        return;
+                    }
+
+                    if (matches.size() > 1) {
+                        showBotMessage("I found multiple matching notes. Please provide more specific text from the note.");
+                        return;
+                    }
+
+                    DocumentSnapshot targetDoc = matches.get(0);
+                    Note existingNote = targetDoc.toObject(Note.class);
+                    if (existingNote == null) return;
+
+                    Map<String, Object> updates = new HashMap<>();
+                    if (!newSummary.isEmpty()) {
+                        updates.put("summary", newSummary);
+                        existingNote.setSummary(newSummary);
+                    }
+                    if (!rawNewType.isEmpty()) {
+                        String normalizedType = normalizeNoteType(
+                                rawNewType,
+                                newSummary.isEmpty() ? existingNote.getSummary() : newSummary,
+                                userMessage
+                        );
+                        updates.put("type", normalizedType);
+                        existingNote.setType(normalizedType);
+                    }
+
+                    if (action != null && (action.has("reminderDate") || action.has("date"))) {
+                        String dateStr = action.optString("reminderDate", action.optString("date", "")).trim();
+                        String timeStr = action.optString("reminderTime", action.optString("time", "")).trim();
+                        long reminderTimeMs = parseDateTimeToMs(dateStr, timeStr);
+                        if (reminderTimeMs > System.currentTimeMillis()) {
+                            updates.put("reminderDate", reminderTimeMs);
+                            updates.put("isReminderEnabled", true);
+                            existingNote.setReminderDate(reminderTimeMs);
+                            existingNote.setReminderEnabled(true);
+                            scheduleNoteNotification(existingNote);
+                        }
+                    }
+
+                    if (updates.isEmpty()) {
+                        showBotMessage("Please specify what you want to change in the note.");
+                        return;
+                    }
+
+                    targetDoc.getReference().update(updates)
+                            .addOnSuccessListener(unused -> {
+                                String reminderMsg = "";
+                                if (updates.containsKey("reminderDate")) {
+                                    SimpleDateFormat sdf = new SimpleDateFormat("MMM dd, yyyy • hh:mm a", Locale.getDefault());
+                                    reminderMsg = "\n⏰ Reminder set for: "
+                                            + sdf.format(new Date((Long) updates.get("reminderDate")));
+                                }
+                                showBotMessage("✅ Note updated successfully!" + reminderMsg);
+                            })
+                            .addOnFailureListener(e -> showBotMessage("❌ Update failed: " + safeString(e.getLocalizedMessage())));
+                })
+                .addOnFailureListener(e -> showBotMessage("❌ Could not search notes: " + safeString(e.getLocalizedMessage())));
+    }
+
+    private void deleteNoteFromAI(JSONObject action, String userMessage) {
+        if (auth.getCurrentUser() == null || auth.getCurrentUser().getEmail() == null) {
+            showBotMessage("Please log in to delete notes.");
+            return;
+        }
+
+        String email = auth.getCurrentUser().getEmail();
+        String targetNoteId = action != null ? action.optString("targetNoteId", action.optString("id", "")).trim() : "";
+        String targetSummary = action != null ? action.optString("targetSummary", action.optString("targetText", "")).trim() : "";
+
+        if (targetSummary.isEmpty() && targetNoteId.isEmpty() && userMessage != null) {
+            targetSummary = extractTargetSearchTerm(userMessage);
+        }
+
+        final String finalSearchTerm = targetSummary;
+
+        db.collection("Users").document(email).collection("Personal Notes")
+                .get()
+                .addOnSuccessListener(querySnapshot -> {
+                    List<DocumentSnapshot> matches = new ArrayList<>();
+                    for (DocumentSnapshot doc : querySnapshot.getDocuments()) {
+                        Note n = doc.toObject(Note.class);
+                        if (n == null) continue;
+
+                        if (!targetNoteId.isEmpty() && doc.getId().equalsIgnoreCase(targetNoteId)) {
+                            matches.add(doc);
+                            break;
+                        }
+
+                        if (!finalSearchTerm.isEmpty()) {
+                            if (n.getSummary().toLowerCase(Locale.ROOT).contains(finalSearchTerm.toLowerCase(Locale.ROOT))) {
+                                matches.add(doc);
+                            }
+                        }
+                    }
+
+                    if (matches.isEmpty()) {
+                        showBotMessage("I couldn't find a matching note to delete.");
+                        return;
+                    }
+
+                    if (matches.size() > 1) {
+                        showBotMessage("Multiple notes match that description. Please specify the exact note text to delete.");
+                        return;
+                    }
+
+                    DocumentSnapshot targetDoc = matches.get(0);
+                    cancelNoteNotification(targetDoc.getId());
+
+                    targetDoc.getReference().delete()
+                            .addOnSuccessListener(unused -> showBotMessage("✅ Note deleted successfully."))
+                            .addOnFailureListener(e -> showBotMessage("❌ Delete failed: " + safeString(e.getLocalizedMessage())));
+                })
+                .addOnFailureListener(e -> showBotMessage("❌ Could not search notes: " + safeString(e.getLocalizedMessage())));
+    }
+
+    private void scheduleNoteNotification(Note note) {
+        if (!note.isReminderEnabled() || note.getReminderDate() <= 0) return;
+
+        Intent intent = new Intent(this, NoteReminderReceiver.class);
+        intent.putExtra("title", "Reminder: " + note.getType());
+        intent.putExtra("message", note.getSummary());
+
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this, note.getId().hashCode(), intent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+
+        AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+        if (alarmManager != null) {
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    if (alarmManager.canScheduleExactAlarms()) {
+                        alarmManager.setExactAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP, note.getReminderDate(), pendingIntent);
+                    } else {
+                        alarmManager.setAndAllowWhileIdle(
+                                AlarmManager.RTC_WAKEUP, note.getReminderDate(), pendingIntent);
+                    }
+                } else {
+                    alarmManager.setExactAndAllowWhileIdle(
+                            AlarmManager.RTC_WAKEUP, note.getReminderDate(), pendingIntent);
+                }
+            } catch (SecurityException e) {
+                alarmManager.setAndAllowWhileIdle(
+                        AlarmManager.RTC_WAKEUP, note.getReminderDate(), pendingIntent);
+            }
+        }
+    }
+
+    private void cancelNoteNotification(String noteId) {
+        if (noteId == null) return;
+        Intent intent = new Intent(this, NoteReminderReceiver.class);
+        PendingIntent pendingIntent = PendingIntent.getBroadcast(
+                this, noteId.hashCode(), intent,
+                PendingIntent.FLAG_NO_CREATE | PendingIntent.FLAG_IMMUTABLE);
+        if (pendingIntent != null) {
+            AlarmManager alarmManager = (AlarmManager) getSystemService(Context.ALARM_SERVICE);
+            if (alarmManager != null) {
+                alarmManager.cancel(pendingIntent);
+            }
+            pendingIntent.cancel();
+        }
+    }
+
+    private long parseDateTimeToMs(String dateStr, String timeStr) {
+        if (dateStr == null || dateStr.trim().isEmpty()) return 0;
+        try {
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy", Locale.ENGLISH);
+            Date date = sdf.parse(dateStr.trim());
+            if (date == null) return 0;
+
+            Calendar cal = Calendar.getInstance();
+            cal.setTime(date);
+
+            if (timeStr != null && !timeStr.trim().isEmpty()) {
+                String[] parts = timeStr.trim().split(":");
+                if (parts.length >= 2) {
+                    int hour = Integer.parseInt(parts[0].trim());
+                    int min = Integer.parseInt(parts[1].trim());
+                    cal.set(Calendar.HOUR_OF_DAY, hour);
+                    cal.set(Calendar.MINUTE, min);
+                    cal.set(Calendar.SECOND, 0);
+                }
+            } else {
+                cal.set(Calendar.HOUR_OF_DAY, 9);
+                cal.set(Calendar.MINUTE, 0);
+                cal.set(Calendar.SECOND, 0);
+            }
+
+            return cal.getTimeInMillis();
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private String extractNoteSummaryFromText(String text) {
+        if (text == null) return "";
+        String clean = text.replaceAll("(?i)^(add note|save note|create note|note add|note save|note banao|note likho)[:\\s]*", "").trim();
+        return clean.isEmpty() ? text : clean;
+    }
+
+    private String extractTargetSearchTerm(String text) {
+        if (text == null) return "";
+        String clean = text.replaceAll("(?i)^(delete note|remove note|update note|edit note|note delete|note remove|note update|note hatao|note badlo)[:\\s]*", "").trim();
+        return clean.isEmpty() ? text : clean;
     }
 
     private String createTransactionId(String date, String time) {
@@ -1335,7 +2089,6 @@ public class AiAssistantActivity extends AppCompatActivity {
         movedData.putAll(updates);
         movedData.put("month", newMonth);
 
-        // Preserve the document ID, but avoid overwriting a destination record.
         String transactionId = target.getId();
         com.google.firebase.firestore.DocumentReference destination =
                 monthCollection(email, newMonth).document(transactionId);

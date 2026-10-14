@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.GestureDetector;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
 import android.view.animation.AccelerateDecelerateInterpolator;
@@ -427,6 +428,52 @@ public class DashboardActivity extends AppCompatActivity {
         }).attach();
 
         viewPagerCharts.setUserInputEnabled(true);
+
+        // Dynamically adjust ViewPager2 height to fit active fragment content without blank space
+        viewPagerCharts.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
+            @Override
+            public void onPageSelected(int position) {
+                super.onPageSelected(position);
+                updateViewPagerHeight(position);
+            }
+        });
+    }
+
+    private void updateViewPagerHeight(int position) {
+        Fragment fragment = null;
+        switch (position) {
+            case 0:
+                fragment = chartDailyFragment;
+                break;
+            case 1:
+                fragment = chartMonthlyFragment;
+                break;
+            case 2:
+                fragment = chartOverallFragment;
+                break;
+        }
+
+        if (fragment != null) {
+            final Fragment targetFragment = fragment;
+            Runnable measureTask = () -> {
+                if (targetFragment.getView() != null && viewPagerCharts != null && viewPagerCharts.getWidth() > 0) {
+                    View view = targetFragment.getView();
+                    int widthSpec = View.MeasureSpec.makeMeasureSpec(viewPagerCharts.getWidth(), View.MeasureSpec.EXACTLY);
+                    int heightSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
+                    view.measure(widthSpec, heightSpec);
+                    ViewGroup.LayoutParams params = viewPagerCharts.getLayoutParams();
+                    if (params != null && view.getMeasuredHeight() > 0 && params.height != view.getMeasuredHeight()) {
+                        params.height = view.getMeasuredHeight();
+                        viewPagerCharts.setLayoutParams(params);
+                    }
+                }
+            };
+
+            if (targetFragment.getView() != null) {
+                targetFragment.getView().post(measureTask);
+                targetFragment.getView().postDelayed(measureTask, 100);
+            }
+        }
     }
 
     private class ChartsPagerAdapter extends FragmentStateAdapter {
@@ -477,10 +524,10 @@ public class DashboardActivity extends AppCompatActivity {
             });
         }
 
-        // Add Important Notes button listener
-        LinearLayout btnImportantNotes = findViewById(R.id.btnImportantNotes);
-        if (btnImportantNotes != null) {
-            btnImportantNotes.setOnClickListener(v -> {
+        // Add Notes quick action button listener
+        LinearLayout btnQuickNotes = findViewById(R.id.btnQuickNotes);
+        if (btnQuickNotes != null) {
+            btnQuickNotes.setOnClickListener(v -> {
                 animateClick(v);
                 startActivity(new Intent(DashboardActivity.this, NotesActivity.class));
             });
@@ -1009,6 +1056,12 @@ public class DashboardActivity extends AppCompatActivity {
             if (chartOverallFragment != null && chartOverallFragment.isAdded()) {
                 chartOverallFragment.updateChart(allTransactionsList);
             }
+
+            mainHandler.postDelayed(() -> {
+                if (viewPagerCharts != null) {
+                    updateViewPagerHeight(viewPagerCharts.getCurrentItem());
+                }
+            }, 100);
         });
     }
 

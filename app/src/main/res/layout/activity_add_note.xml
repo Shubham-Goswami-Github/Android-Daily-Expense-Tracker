@@ -5,103 +5,410 @@
     android:layout_height="match_parent"
     android:background="@color/background_primary">
 
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbarAddNote"
+    <!-- Gradient Header -->
+    <View
+        android:id="@+id/headerBackground"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/primary_blue"
-        app:title="Add New Note"
-        app:titleTextColor="@color/white"
-        app:navigationIcon="@drawable/ic_arrow_back"
-        app:layout_constraintTop_toTopOf="parent"/>
+        android:layout_height="160dp"
+        android:background="@drawable/bg_header_gradient"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <ScrollView
+    <LinearLayout
+        android:id="@+id/customHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="16dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/btnBackNote"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_arrow_back"
+            android:background="@drawable/bg_ripple_circle_white"
+            android:clickable="true"
+            android:focusable="true"
+            app:tint="#FFFFFF" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="New Note"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Capture what matters to you"
+                android:textColor="#E0E7FF"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+    </LinearLayout>
+
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        app:layout_constraintTop_toBottomOf="@id/toolbarAddNote"
+        android:fillViewport="true"
+        android:clipToPadding="false"
+        android:paddingBottom="24dp"
+        app:layout_constraintTop_toBottomOf="@id/headerBackground"
         app:layout_constraintBottom_toBottomOf="parent">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:padding="20dp">
+            android:padding="18dp">
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Note Type"
-                android:textColor="@color/text_primary"
-                android:fontFamily="sans-serif-medium"
-                android:layout_marginBottom="8dp"/>
-
-            <Spinner
-                android:id="@+id/spinnerNoteType"
-                android:layout_width="match_parent"
-                android:layout_height="52dp"
-                android:background="@drawable/edittext_bg"
-                android:padding="10dp"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Note Summary"
-                android:textColor="@color/text_primary"
-                android:fontFamily="sans-serif-medium"
-                android:layout_marginTop="20dp"
-                android:layout_marginBottom="8dp"/>
-
-            <EditText
-                android:id="@+id/etNoteSummary"
-                android:layout_width="match_parent"
-                android:layout_height="150dp"
-                android:background="@drawable/edittext_bg"
-                android:gravity="top"
-                android:padding="12dp"
-                android:hint="Write your note here..."
-                android:inputType="textMultiLine"
-                android:textColor="@color/text_primary"/>
-
-            <LinearLayout
+            <!-- ============ NOTE TYPE CARD ============ -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardNoteType"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="24dp">
+                app:cardCornerRadius="18dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:alpha="0"
+                android:translationY="24dp">
 
-                <CheckBox
-                    android:id="@+id/cbRemindMe"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Remind me on"
-                    android:textColor="@color/text_primary"
-                    android:fontFamily="sans-serif-medium"/>
-
-                <TextView
-                    android:id="@+id/tvSelectedDate"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:padding="12dp"
-                    android:background="@drawable/edittext_bg"
-                    android:text="Select Date"
-                    android:textColor="@color/text_secondary"
-                    android:gravity="center"
-                    android:visibility="gone"/>
-            </LinearLayout>
+                    android:orientation="vertical"
+                    android:padding="18dp">
 
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="What's this note about?"
+                        android:textColor="#0F172A"
+                        android:textSize="15sp"
+                        android:fontFamily="sans-serif-bold"
+                        android:layout_marginBottom="14dp"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:weightSum="3">
+
+                        <!-- Money Lending Card -->
+                        <LinearLayout
+                            android:id="@+id/cardTypeMoneyLending"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:paddingVertical="12dp"
+                            android:paddingHorizontal="4dp"
+                            android:layout_marginEnd="3dp"
+                            android:background="@drawable/bg_type_selected"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="💰"
+                                android:textSize="24sp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="Money Lending"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="11sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="2"/>
+                        </LinearLayout>
+
+                        <!-- Money Borrowed Card -->
+                        <LinearLayout
+                            android:id="@+id/cardTypeMoneyBorrowed"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:paddingVertical="12dp"
+                            android:paddingHorizontal="4dp"
+                            android:layout_marginStart="3dp"
+                            android:layout_marginEnd="3dp"
+                            android:background="@drawable/bg_type_unselected"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="💸"
+                                android:textSize="24sp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="Money Borrowed"
+                                android:textColor="#64748B"
+                                android:textSize="11sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="2"/>
+                        </LinearLayout>
+
+                        <!-- General Reminder Card -->
+                        <LinearLayout
+                            android:id="@+id/cardTypeGeneral"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:gravity="center"
+                            android:paddingVertical="12dp"
+                            android:paddingHorizontal="4dp"
+                            android:layout_marginStart="3dp"
+                            android:background="@drawable/bg_type_unselected"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🔔"
+                                android:textSize="24sp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="6dp"
+                                android:text="General Reminder"
+                                android:textColor="#64748B"
+                                android:textSize="11sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="center"
+                                android:maxLines="2"/>
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ============ NOTE DETAILS CARD ============ -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardNoteDetails"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:alpha="0"
+                android:translationY="24dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📝  Write your note"
+                        android:textColor="#0F172A"
+                        android:textSize="15sp"
+                        android:fontFamily="sans-serif-bold"
+                        android:layout_marginBottom="12dp"/>
+
+                    <EditText
+                        android:id="@+id/etNoteSummary"
+                        android:layout_width="match_parent"
+                        android:layout_height="140dp"
+                        android:background="@drawable/edittext_bg"
+                        android:gravity="top"
+                        android:padding="14dp"
+                        android:hint="e.g. Lent ₹500 to Rahul, repay by month end..."
+                        android:textColorHint="#94A3B8"
+                        android:inputType="textMultiLine|textCapSentences"
+                        android:maxLength="500"
+                        android:textColor="#0F172A"
+                        android:textSize="14sp"/>
+
+                    <TextView
+                        android:id="@+id/tvCharCount"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="end"
+                        android:text="0 / 500"
+                        android:textColor="#64748B"
+                        android:textSize="11sp"/>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ============ REMINDER CARD ============ -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardReminder"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="4dp"
+                app:cardBackgroundColor="#FFFFFF"
+                android:alpha="0"
+                android:translationY="24dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical">
+
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
+                            android:layout_height="wrap_content"
+                            android:text="⏰  Set a Reminder"
+                            android:textColor="#0F172A"
+                            android:textSize="15sp"
+                            android:fontFamily="sans-serif-bold"/>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchRemindMe"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"/>
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/reminderDetailsContainer"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="14dp"
+                        android:visibility="gone"
+                        android:alpha="0">
+
+                        <!-- Date Chip -->
+                        <LinearLayout
+                            android:id="@+id/dateChipContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:background="@drawable/bg_chip_date_time"
+                            android:padding="14dp"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="📅"
+                                android:textSize="18sp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="10dp"
+                                android:text="Date"
+                                android:textColor="#64748B"
+                                android:textSize="13sp"/>
+
+                            <TextView
+                                android:id="@+id/tvSelectedDate"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="Select Date"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="end"/>
+                        </LinearLayout>
+
+                        <!-- Time Chip -->
+                        <LinearLayout
+                            android:id="@+id/timeChipContainer"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:background="@drawable/bg_chip_date_time"
+                            android:padding="14dp"
+                            android:layout_marginTop="10dp"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="🕒"
+                                android:textSize="18sp"/>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="10dp"
+                                android:text="Time"
+                                android:textColor="#64748B"
+                                android:textSize="13sp"/>
+
+                            <TextView
+                                android:id="@+id/tvSelectedTime"
+                                android:layout_width="0dp"
+                                android:layout_weight="1"
+                                android:layout_height="wrap_content"
+                                android:layout_marginStart="8dp"
+                                android:text="9:00 AM"
+                                android:textColor="@color/primary_blue"
+                                android:textSize="14sp"
+                                android:fontFamily="sans-serif-medium"
+                                android:gravity="end"/>
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- ============ SAVE BUTTON ============ -->
             <Button
                 android:id="@+id/btnSubmitNote"
                 android:layout_width="match_parent"
                 android:layout_height="56dp"
-                android:text="Save Note"
-                android:layout_marginTop="40dp"
-                android:backgroundTint="@color/primary_blue"
-                android:textColor="@color/white"
+                android:layout_marginTop="28dp"
+                android:text="💾  Save Note"
+                android:textAllCaps="false"
+                android:textColor="#FFFFFF"
+                android:textSize="15sp"
                 android:fontFamily="sans-serif-bold"
-                app:cornerRadius="12dp"/>
+                android:background="@drawable/bg_save_button_gradient"
+                android:stateListAnimator="@null"
+                android:alpha="0"
+                android:translationY="24dp"/>
 
         </LinearLayout>
-    </ScrollView>
+    </androidx.core.widget.NestedScrollView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

@@ -11,9 +11,9 @@
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ft_logo_4"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/ft_logo_4"
         android:supportsRtl="true"
         android:theme="@style/Theme.FinanceTracker"
         tools:targetApi="31">
@@ -109,8 +109,8 @@
             android:name=".AiAssistantActivity"
             android:exported="true"
             android:label="AiBot"
-            android:icon="@mipmap/ic_aibot_logo"
-            android:roundIcon="@mipmap/ic_aibot_logo"
+            android:icon="@mipmap/bot_logo_1"
+            android:roundIcon="@mipmap/bot_logo_1"
             android:theme="@style/Theme.FinanceTracker.AiPopup"
             android:launchMode="singleTask"
             android:taskAffinity="com.cscorner.financetracker.aibot"
@@ -122,7 +122,7 @@
             </intent-filter>
 
         </activity>
-        ```
+
         <!-- Note reminders -->
         <receiver
             android:name=".NoteReminderReceiver"

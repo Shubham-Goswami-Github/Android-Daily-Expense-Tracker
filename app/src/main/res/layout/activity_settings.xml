@@ -58,7 +58,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="match_parent"
                         android:scaleType="centerCrop"
-                        android:src="@drawable/logoft"
+                        android:src="@drawable/logoft3"
                         android:contentDescription="App Logo" />
 
                 </com.google.android.material.card.MaterialCardView>

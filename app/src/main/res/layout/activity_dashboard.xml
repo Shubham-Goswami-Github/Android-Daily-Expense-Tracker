@@ -56,7 +56,7 @@
                         android:layout_height="40dp"
                         android:contentDescription="App logo"
                         android:scaleType="centerInside"
-                        android:src="@drawable/logoft" />
+                        android:src="@drawable/logoft3" />
 
                     <LinearLayout
                         android:layout_width="wrap_content"
@@ -133,7 +133,7 @@
                         android:focusable="true"
                         android:contentDescription="Profile / Settings"
                         android:foreground="?attr/selectableItemBackgroundBorderless"
-                        android:src="@drawable/default_avatar"
+                        android:src="@drawable/settings_logo"
                         app:civ_border_color="#FFFFFF"
                         app:civ_border_width="2dp" />
                 </LinearLayout>
@@ -381,37 +381,6 @@
                                 android:fontFamily="sans-serif-medium"
                                 android:layout_marginStart="4dp"/>
                         </LinearLayout>
-
-                        <!-- Notes Badge - Premium gradient look -->
-                        <LinearLayout
-                            android:id="@+id/btnImportantNotes"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical"
-                            android:layout_marginStart="8dp"
-                            android:background="@drawable/bg_notes_badge_gradient"
-                            android:paddingHorizontal="10dp"
-                            android:paddingVertical="5dp"
-                            android:clickable="true"
-                            android:focusable="true"
-                            android:elevation="2dp">
-
-                            <ImageView
-                                android:layout_width="14dp"
-                                android:layout_height="14dp"
-                                android:src="@drawable/ic_note_24"
-                                app:tint="#FFFFFF"/>
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Notes"
-                                android:textColor="#FFFFFF"
-                                android:textSize="11sp"
-                                android:fontFamily="sans-serif-medium"
-                                android:layout_marginStart="4dp"/>
-                        </LinearLayout>
                     </LinearLayout>
 
                     <!-- Spending Progress Section -->
@@ -594,7 +563,7 @@
                 android:layout_marginHorizontal="16dp"
                 android:layout_marginTop="20dp"
                 android:orientation="horizontal"
-                android:weightSum="3"
+                android:weightSum="4"
                 app:layout_constraintTop_toBottomOf="@id/balanceCard">
 
                 <!-- Add Income -->
@@ -706,6 +675,44 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
                         android:text="Statistics"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp"
+                        android:fontFamily="sans-serif-medium"/>
+                </LinearLayout>
+
+                <!-- Notes -->
+                <LinearLayout
+                    android:id="@+id/btnQuickNotes"
+                    android:layout_width="0dp"
+                    android:layout_weight="1"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:gravity="center"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:background="@drawable/bg_ripple_rounded"
+                    android:padding="10dp">
+
+                    <com.google.android.material.card.MaterialCardView
+                        android:layout_width="52dp"
+                        android:layout_height="52dp"
+                        app:cardBackgroundColor="#FEF3C7"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="2dp">
+
+                        <ImageView
+                            android:layout_width="match_parent"
+                            android:layout_height="match_parent"
+                            android:padding="14dp"
+                            android:src="@drawable/ic_note_24"
+                            app:tint="#D97706"/>
+                    </com.google.android.material.card.MaterialCardView>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Notes"
                         android:textColor="@color/text_primary"
                         android:textSize="12sp"
                         android:fontFamily="sans-serif-medium"/>

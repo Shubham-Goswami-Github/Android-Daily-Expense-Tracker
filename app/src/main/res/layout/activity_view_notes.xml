@@ -5,50 +5,194 @@
     android:layout_height="match_parent"
     android:background="@color/background_primary">
 
-    <androidx.appcompat.widget.Toolbar
-        android:id="@+id/toolbarViewNotes"
+    <!-- Gradient Header -->
+    <View
+        android:id="@+id/headerBackground"
         android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/primary_blue"
-        app:title="My Notes"
-        app:titleTextColor="@color/white"
-        app:navigationIcon="@drawable/ic_arrow_back"
-        app:layout_constraintTop_toTopOf="parent"/>
+        android:layout_height="160dp"
+        android:background="@drawable/bg_header_gradient"
+        app:layout_constraintTop_toTopOf="parent" />
 
+    <LinearLayout
+        android:id="@+id/customHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="12dp"
+        android:paddingTop="48dp"
+        android:paddingBottom="16dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <ImageView
+            android:id="@+id/btnBackViewNotes"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:padding="10dp"
+            android:src="@drawable/ic_arrow_back"
+            android:background="@drawable/bg_ripple_circle_white"
+            android:clickable="true"
+            android:focusable="true"
+            app:tint="#FFFFFF" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginStart="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="My Notes"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:fontFamily="sans-serif-bold"/>
+
+            <TextView
+                android:id="@+id/tvNotesCount"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Loading notes..."
+                android:textColor="#E0E7FF"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"/>
+        </LinearLayout>
+
+        <ImageView
+            android:id="@+id/btnRefreshNotes"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:padding="9dp"
+            android:src="@drawable/ic_refresh"
+            android:background="@drawable/bg_ripple_circle_white"
+            android:clickable="true"
+            android:focusable="true"
+            android:contentDescription="Refresh notes"
+            app:tint="#FFFFFF" />
+    </LinearLayout>
+
+    <!-- Notes List -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rvNotes"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:padding="12dp"
+        android:padding="14dp"
         android:clipToPadding="false"
-        app:layout_constraintTop_toBottomOf="@id/toolbarViewNotes"
+        app:layout_constraintTop_toBottomOf="@id/headerBackground"
         app:layout_constraintBottom_toBottomOf="parent"/>
 
+    <!-- Loading Indicator -->
+    <ProgressBar
+        android:id="@+id/progressLoadingNotes"
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:indeterminateTint="@color/primary_blue"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="@id/rvNotes"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- Empty State -->
     <LinearLayout
         android:id="@+id/emptyNotesState"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
         android:gravity="center"
+        android:padding="40dp"
         android:visibility="gone"
-        app:layout_constraintTop_toTopOf="parent"
+        android:alpha="0"
+        app:layout_constraintTop_toTopOf="@id/rvNotes"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
-        <ImageView
+        <com.google.android.material.card.MaterialCardView
             android:layout_width="100dp"
             android:layout_height="100dp"
-            android:src="@drawable/ic_note_24"
-            app:tint="@color/light_gray"/>
+            app:cardBackgroundColor="#F1F5F9"
+            app:cardCornerRadius="50dp"
+            app:cardElevation="0dp">
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:padding="26dp"
+                android:src="@drawable/ic_note_24"
+                app:tint="#94A3B8"/>
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="No notes found"
+            android:text="No Notes Yet"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:fontFamily="sans-serif-bold"
+            android:layout_marginTop="20dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Save reminders, lending records &amp;\nimportant notes right here"
             android:textColor="@color/text_secondary"
-            android:textSize="16sp"
-            android:layout_marginTop="16dp"/>
+            android:textSize="13sp"
+            android:gravity="center"
+            android:lineSpacingExtra="4dp"
+            android:layout_marginTop="8dp"/>
+
+        <Button
+            android:id="@+id/btnAddFirstNote"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginTop="22dp"
+            android:paddingHorizontal="24dp"
+            android:text="➕  Add Your First Note"
+            android:textAllCaps="false"
+            android:textColor="#FFFFFF"
+            android:textSize="13.5sp"
+            android:fontFamily="sans-serif-medium"
+            android:background="@drawable/bg_save_button_gradient"
+            android:stateListAnimator="@null"/>
     </LinearLayout>
+
+    <!-- Floating Add Note Button -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/fabAddNote"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_add"
+        android:contentDescription="Add new note"
+        app:backgroundTint="@color/primary_blue"
+        app:tint="@android:color/white"
+        app:elevation="6dp"
+        app:layout_constraintBottom_toTopOf="@id/btnAiAssistant"
+        app:layout_constraintEnd_toEndOf="parent"/>
+
+    <!-- AI Assistant FAB - Bottom Right -->
+    <com.google.android.material.floatingactionbutton.FloatingActionButton
+        android:id="@+id/btnAiAssistant"
+        android:layout_width="76dp"
+        android:layout_height="76dp"
+        android:layout_marginEnd="20dp"
+        android:layout_marginBottom="24dp"
+        android:contentDescription="Open AI Finance Assistant"
+        android:src="@drawable/ic_ai_bot_2"
+        android:backgroundTint="@android:color/transparent"
+        app:backgroundTint="@android:color/transparent"
+        app:tint="@null"
+        app:elevation="0dp"
+        app:pressedTranslationZ="0dp"
+        app:borderWidth="0dp"
+        app:rippleColor="@android:color/transparent"
+        app:fabCustomSize="76dp"
+        app:maxImageSize="70dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
